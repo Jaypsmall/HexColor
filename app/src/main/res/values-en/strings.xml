@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">HexColor</string>
+    <string name="palette">Palette</string>
+    <string name="wheel">HSL Wheel</string>
+    <string name="favorites_header">Favorites (Long press to delete)</string>
+    <string name="show">Show</string>
+    <string name="random">Random</string>
+    <string name="complementary">Complementary</string>
+    <string name="triadic">Triadic</string>
+    <string name="analogous">Analogous</string>
+    <string name="invalid_hex">Invalid HEX</string>
+    <string name="copied">Copied</string>
+    <string name="saved">Saved to favorites</string>
+    <string name="deleted">Deleted</string>
+    <string name="selected_color">Selected Color</string>
+    <string name="move_box">Drag this box with your finger</string>
+    <string name="overlay_permission">Grant permission for the floating menu</string>
+    <string name="original">Original</string>
+</resources>

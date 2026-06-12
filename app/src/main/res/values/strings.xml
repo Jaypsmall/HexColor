@@ -1,0 +1,19 @@
+<resources>
+    <string name="app_name">HexColor</string>
+    <string name="palette">Paleta</string>
+    <string name="wheel">Rueda HSL</string>
+    <string name="favorites_header">Favoritos (Mantén para borrar)</string>
+    <string name="show">Mostrar</string>
+    <string name="random">Aleatorio</string>
+    <string name="complementary">Complementario</string>
+    <string name="triadic">Triádico</string>
+    <string name="analogous">Análogo</string>
+    <string name="invalid_hex">HEX inválido</string>
+    <string name="copied">Copiado</string>
+    <string name="saved">Guardado en favoritos</string>
+    <string name="deleted">Eliminado</string>
+    <string name="selected_color">Color Seleccionado</string>
+    <string name="move_box">Mueve este cuadro con el dedo</string>
+    <string name="overlay_permission">Concede el permiso para el menú flotante</string>
+    <string name="original">Original</string>
+</resources>
