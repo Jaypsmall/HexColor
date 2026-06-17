@@ -41,6 +41,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -232,8 +233,8 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     val clipboardManager = LocalClipboardManager.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
 
-    // DataStore keys
     val favoritesKey = remember { stringSetPreferencesKey("fav_colors") }
+    val palettesKey = remember { stringSetPreferencesKey("user_palettes") } // Almacena paletas como JSON: {"name": "X", "colors": ["#111", "#222"]}
     val caosModeKey = remember { booleanPreferencesKey("caos_mode") }
     val analogousCountKey = remember { intPreferencesKey("analogous_count") }
     val fixedUiColorKey = remember { stringPreferencesKey("fixed_ui_color") }
@@ -278,6 +279,9 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
 
     val favoritesFlow = remember { context.dataStore.data.map { it[favoritesKey] ?: emptySet() } }
     val favorites by favoritesFlow.collectAsState(initial = emptySet())
+    
+    val palettesFlow = remember { context.dataStore.data.map { it[palettesKey] ?: emptySet() } }
+    val savedPalettes by palettesFlow.collectAsState(initial = emptySet())
 
     var hexInput by remember { mutableStateOf("#21DD10") }
     var currentColor by remember { mutableStateOf(Color(0xFF21DD10)) }
@@ -331,6 +335,35 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
 
     val pagerState = rememberPagerState(pageCount = { 4 })
 
+    val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { stream ->
+                    val fileName = it.path?.substringAfterLast("/") ?: "Imported"
+                    val content = stream.bufferedReader().readText()
+                    val hexRegex = Regex("#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})")
+                    val matches = hexRegex.findAll(content).map { m -> m.value.uppercase() }.distinct().toList()
+                    if (matches.isNotEmpty()) {
+                        scope.launch {
+                            context.dataStore.edit { prefs ->
+                                val current = prefs[palettesKey] ?: emptySet()
+                                // Guardamos como un "lote" tipo lista de reproducción
+                                val newPaletteJson = "{\"name\":\"$fileName\", \"colors\":${matches.map { "\"$it\"" }}}"
+                                prefs[palettesKey] = current + newPaletteJson
+                            }
+                            Toast.makeText(context, context.getString(R.string.import_success) + ": ${matches.size}", Toast.LENGTH_SHORT).show()
+                            pagerState.animateScrollToPage(2) 
+                        }
+                    } else {
+                        Toast.makeText(context, context.getString(R.string.import_error), Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, context.getString(R.string.import_error), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -353,6 +386,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                 NavigationDrawerItem(label = { Text(stringResource(R.string.wheel)) }, selected = pagerState.currentPage == 1, onClick = { scope.launch { pagerState.animateScrollToPage(1); drawerState.close() } }, icon = { Icon(Icons.Default.ColorLens, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
                 NavigationDrawerItem(label = { Text(stringResource(R.string.picker)) }, selected = pagerState.currentPage == 3, onClick = { scope.launch { pagerState.animateScrollToPage(3); drawerState.close() } }, icon = { Icon(Icons.Default.Colorize, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
                 NavigationDrawerItem(label = { Text(stringResource(R.string.favorites_header).take(9)) }, selected = pagerState.currentPage == 2, onClick = { scope.launch { pagerState.animateScrollToPage(2); drawerState.close() } }, icon = { Icon(Icons.Default.Star, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
+                NavigationDrawerItem(label = { Text(stringResource(R.string.import_palette)) }, selected = false, onClick = { scope.launch { drawerState.close(); importLauncher.launch("text/css") } }, icon = { Icon(Icons.Default.FileUpload, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
                 NavigationDrawerItem(label = { Text("Ajustes") }, selected = false, onClick = { scope.launch { showSettingsDialog = true; drawerState.close() } }, icon = { Icon(Icons.Default.Settings, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
@@ -367,44 +401,68 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
             containerColor = if (isDarkMode) Color.Black else Color(0xFFFAFAFA),
             topBar = {
                 Column(modifier = Modifier.background(if (isDarkMode) Color.Black else Color(0xFFEEEEEE)).statusBarsPadding()) {
-                    Spacer(modifier = Modifier.fillMaxWidth().height(1.dp).background(if (isDarkMode) Color(0xFF222222) else Color(0xFFAAAAAA)))
-                    Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { scope.launch { drawerState.open() } }) { Icon(Icons.Default.Menu, contentDescription = "Menu", tint = if (isDarkMode) Color.Gray else Color.Black) }
-                        Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                            val tabs = listOf(R.string.palette, R.string.wheel, R.string.picker)
-                            tabs.forEachIndexed { index, resId ->
-                                val isSelected = if (pagerState.currentPage == 2) false else (if (pagerState.currentPage == 3) index == 2 else pagerState.currentPage == index)
-                                val shape = when(index) {
-                                    0 -> RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
-                                    1 -> RoundedCornerShape(0.dp)
-                                    else -> RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp)
-                                }
-                                val baseColor = if (isDarkMode) Color.Black else Color.White
-                                
-                                Surface(
-                                    onClick = { scope.launch { pagerState.animateScrollToPage(if (index == 2) 3 else index) } },
-                                    modifier = Modifier.weight(1f).height(44.dp).shadow(4.dp, shape),
-                                    shape = shape,
-                                    color = baseColor,
-                                    border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.35f) else Color.Black.copy(0.4f))
+                    // Row 1: Menú + Logo + Título
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Menu", tint = if (isDarkMode) Color.Gray else Color.Black)
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Image(
+                            painter = painterResource(id = R.drawable.icono_hex3),
+                            contentDescription = "Logo",
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            text = "HEX COLOR",
+                            style = TextStyle(
+                                color = uiAccentColor,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 1.sp
+                            )
+                        )
+                    }
+
+                    // Row 2: Botones de navegación (Tabs)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val tabs = listOf(R.string.palette, R.string.wheel, R.string.picker)
+                        tabs.forEachIndexed { index, resId ->
+                            val isSelected = if (pagerState.currentPage == 2) false else (if (pagerState.currentPage == 3) index == 2 else pagerState.currentPage == index)
+                            val shape = RoundedCornerShape(12.dp)
+                            val baseColor = if (isDarkMode) Color.Black else Color.White
+                            
+                            Surface(
+                                onClick = { scope.launch { pagerState.animateScrollToPage(if (index == 2) 3 else index) } },
+                                modifier = Modifier.weight(1f).height(40.dp).shadow(if(isSelected) 6.dp else 2.dp, shape),
+                                shape = shape,
+                                color = baseColor,
+                                border = BorderStroke(1.dp, if (isSelected) uiAccentColor.copy(0.6f) else (if (isDarkMode) Color.White.copy(0.2f) else Color.Black.copy(0.1f)))
+                            ) {
+                                Box(modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFF0F0F0)))
+                                    .background(Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent)))
                                 ) {
-                                    // El color va en una capa interna para no tocar el borde exterior
-                                    Box(modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFDDDDDD)))
-                                        .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))
-                                        // Borde de cristal que siempre sobrevive
-                                        .border(1.5.dp, Color.White.copy(0.2f), shape)
-                                    ) {
-                                        // Línea de sombra interna para separar el color del borde
-                                        Box(modifier = Modifier.fillMaxSize().padding(1.dp).border(0.5.dp, Color.Black.copy(0.2f), shape), contentAlignment = Alignment.Center) {
-                                            Text(stringResource(resId), color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
-                                        }
+                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = stringResource(resId).uppercase(),
+                                            color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            fontSize = 11.sp,
+                                            letterSpacing = 0.5.sp
+                                        )
                                     }
                                 }
                             }
                         }
-                        Spacer(Modifier.width(48.dp))
                     }
                     // Borde plata profesional separador (Efecto Metal Pulido)
                     Box(modifier = Modifier
@@ -433,7 +491,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                     when (page) {
                         0 -> PaletteScreen(isDarkMode, hexInput, { hexInput = it }, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, hsvValue, { hsvValue = it; currentColor = ColorUtils.hsvToColor(it[0], it[1], it[2]); hexInput = ColorUtils.colorToHex(currentColor) }, colorItems, { color -> val hex = ColorUtils.colorToHex(color); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, currentLocale, { toggleLanguage() }, isSniperMode, { isSniperMode = !isSniperMode }, uiAccentColor)
                         1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorUtils.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorUtils.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(2) } }, currentLocale, uiAccentColor)
-                        2 -> FavoritesScreen(isDarkMode, favorites, { favHex -> val favColor = ColorUtils.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } })
+                        2 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorUtils.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } })
                         3 -> PickerScreen(isDarkMode, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } }, uiAccentColor)
                     }
                 }
@@ -765,12 +823,103 @@ private fun InfoCard(isDarkMode: Boolean, currentColor: Color, harmonyColors: Li
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun FavoritesScreen(isDarkMode: Boolean, favorites: Set<String>, onColorSelect: (String) -> Unit, onDeleteFavorite: (String) -> Unit) {
+fun FavoritesScreen(isDarkMode: Boolean, favorites: Set<String>, savedPalettes: Set<String>, onColorSelect: (String) -> Unit, onDeleteFavorite: (String) -> Unit, onDeletePalette: (String) -> Unit) {
     val bgColor = if (isDarkMode) Color(0xFF141414) else Color(0xFFFAFAFA)
-    Column(modifier = Modifier.fillMaxSize().background(bgColor).padding(16.dp)) {
-        Text(stringResource(R.string.favorites_header), color = if (isDarkMode) Color.Gray else Color(0xFF444444), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(bottom = 16.dp))
-        if (favorites.isEmpty()) { Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text("No hay favoritos guardados", color = Color.Gray) } } else { LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 80.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) { items(favorites.toList()) { favHex -> val favColor = ColorUtils.hexToColor(favHex) ?: Color.Gray; Box(modifier = Modifier.aspectRatio(1f).clip(CircleShape).background(favColor).border(2.dp, if (isDarkMode) Color(0xFF444444) else Color.White, CircleShape).combinedClickable(onClick = { onColorSelect(favHex) }, onLongClick = { onDeleteFavorite(favHex) })) } } }
+    val cardColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
+    val borderColor = if (isDarkMode) Color.White.copy(0.12f) else Color.Black.copy(0.08f)
+    
+    Column(modifier = Modifier.fillMaxSize().background(bgColor).padding(16.dp).verticalScroll(rememberScrollState())) {
+        // --- COLORES INDIVIDUALES ---
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.History, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.favorites_header).uppercase(), color = if (isDarkMode) Color.LightGray else Color(0xFF444444), fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+        }
+        Spacer(Modifier.height(16.dp))
+        
+        if (favorites.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().height(80.dp).background(cardColor, RoundedCornerShape(12.dp)).border(1.dp, borderColor, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Text("Sin colores guardados", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+            }
+        } else {
+            FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                favorites.forEach { favHex ->
+                    val color = ColorUtils.hexToColor(favHex) ?: Color.Gray
+                    Box(modifier = Modifier
+                        .size(60.dp)
+                        .shadow(4.dp, RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(color)
+                        .border(1.5.dp, if (isDarkMode) Color.White.copy(0.2f) else Color.Black.copy(0.1f), RoundedCornerShape(10.dp))
+                        .combinedClickable(onClick = { onColorSelect(favHex) }, onLongClick = { onDeleteFavorite(favHex) })
+                    ) {
+                        // Brillo premium tipo cristal
+                        Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))))
+                    }
+                }
+            }
+        }
+
+        Spacer(Modifier.height(32.dp))
+        
+        // --- MIS ÁLBUMES DE COLOR (Lotes / Playlists) ---
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.LibraryBooks, null, tint = Color.Gray, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text(stringResource(R.string.palettes_tab).uppercase(), color = if (isDarkMode) Color.LightGray else Color(0xFF444444), fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+        }
+        Spacer(Modifier.height(16.dp))
+
+        if (savedPalettes.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().height(120.dp).background(cardColor, RoundedCornerShape(12.dp)).border(1.dp, borderColor, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(Icons.Default.Palette, null, tint = Color.Gray.copy(0.3f), modifier = Modifier.size(32.dp))
+                    Spacer(Modifier.height(8.dp))
+                    Text(stringResource(R.string.no_palettes), color = Color.Gray, fontSize = 11.sp)
+                }
+            }
+        } else {
+            savedPalettes.forEach { paletteJson ->
+                val palette = try {
+                    val name = paletteJson.substringAfter("\"name\":\"").substringBefore("\"")
+                    val colorsStr = paletteJson.substringAfter("\"colors\":[").substringBefore("]")
+                    val colors = colorsStr.split(",").map { it.replace("\"", "").trim() }.filter { it.isNotEmpty() }
+                    Pair(name, colors)
+                } catch (e: Exception) { Pair("Imported Palette", emptyList<String>()) }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = cardColor),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                    border = BorderStroke(1.dp, borderColor)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(palette.first.replace(".css", ""), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (isDarkMode) Color.White else Color.Black, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                Text("${palette.second.size} COLORES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp)
+                            }
+                            IconButton(onClick = { onDeletePalette(paletteJson) }, modifier = Modifier.size(32.dp).background(Color.Red.copy(0.1f), CircleShape)) {
+                                Icon(Icons.Default.Delete, null, tint = Color.Red.copy(0.8f), modifier = Modifier.size(16.dp))
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        // Barra de colores tipo "Playlist"
+                        Row(modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(8.dp)).border(1.dp, borderColor, RoundedCornerShape(8.dp))) {
+                            palette.second.forEach { colorHex ->
+                                val color = ColorUtils.hexToColor(colorHex) ?: Color.Gray
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(color).clickable { onColorSelect(colorHex) }) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent))))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

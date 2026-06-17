@@ -20,4 +20,13 @@
     <string name="select_image">Select Image</string>
     <string name="detect_colors">Detect Colors</string>
     <string name="no_image">No image selected</string>
+    <string name="import_palette">Import Palette</string>
+    <string name="select_css">Select CSS file</string>
+    <string name="import_success">Palette imported successfully</string>
+    <string name="import_error">Error importing file</string>
+    <string name="palette_name">Palette Name</string>
+    <string name="save_palette">Save Palette</string>
+    <string name="delete_palette">Delete Palette</string>
+    <string name="no_palettes">No palettes saved</string>
+    <string name="palettes_tab">My Palettes</string>
 </resources>
