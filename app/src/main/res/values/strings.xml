@@ -16,4 +16,8 @@
     <string name="move_box">Mueve este cuadro con el dedo</string>
     <string name="overlay_permission">Concede el permiso para el menú flotante</string>
     <string name="original">Original</string>
+    <string name="picker">Extractor</string>
+    <string name="select_image">Seleccionar Imagen</string>
+    <string name="detect_colors">Detectar Colores</string>
+    <string name="no_image">No hay imagen seleccionada</string>
 </resources>

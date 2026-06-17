@@ -11,7 +11,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.toSize
+import androidx.palette.graphics.Palette
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -67,6 +78,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -317,7 +329,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         list.toList()
     }
 
-    val pagerState = rememberPagerState(pageCount = { 3 })
+    val pagerState = rememberPagerState(pageCount = { 4 })
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -339,6 +351,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                 NavigationDrawerItem(label = { Text("Modo Sniper", fontWeight = FontWeight.Bold) }, selected = false, onClick = { scope.launch { drawerState.close(); Toast.makeText(context, "¡Hazme Premium Bro! 🎯", Toast.LENGTH_LONG).show() } }, icon = { Icon(Icons.Default.CenterFocusStrong, contentDescription = null, tint = uiAccentColor) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
                 NavigationDrawerItem(label = { Text(stringResource(R.string.palette)) }, selected = pagerState.currentPage == 0, onClick = { scope.launch { pagerState.animateScrollToPage(0); drawerState.close() } }, icon = { Icon(Icons.Default.Palette, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
                 NavigationDrawerItem(label = { Text(stringResource(R.string.wheel)) }, selected = pagerState.currentPage == 1, onClick = { scope.launch { pagerState.animateScrollToPage(1); drawerState.close() } }, icon = { Icon(Icons.Default.ColorLens, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
+                NavigationDrawerItem(label = { Text(stringResource(R.string.picker)) }, selected = pagerState.currentPage == 3, onClick = { scope.launch { pagerState.animateScrollToPage(3); drawerState.close() } }, icon = { Icon(Icons.Default.Colorize, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
                 NavigationDrawerItem(label = { Text(stringResource(R.string.favorites_header).take(9)) }, selected = pagerState.currentPage == 2, onClick = { scope.launch { pagerState.animateScrollToPage(2); drawerState.close() } }, icon = { Icon(Icons.Default.Star, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
                 Spacer(Modifier.weight(1f))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
@@ -358,14 +371,18 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                     Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) { Icon(Icons.Default.Menu, contentDescription = "Menu", tint = if (isDarkMode) Color.Gray else Color.Black) }
                         Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(0.dp)) {
-                            val tabs = listOf(R.string.palette, R.string.wheel)
+                            val tabs = listOf(R.string.palette, R.string.wheel, R.string.picker)
                             tabs.forEachIndexed { index, resId ->
-                                val isSelected = min(pagerState.currentPage, 1) == index
-                                val shape = if (index == 0) RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp) else RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp)
+                                val isSelected = if (pagerState.currentPage == 2) false else (if (pagerState.currentPage == 3) index == 2 else pagerState.currentPage == index)
+                                val shape = when(index) {
+                                    0 -> RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+                                    1 -> RoundedCornerShape(0.dp)
+                                    else -> RoundedCornerShape(topEnd = 12.dp, bottomEnd = 12.dp)
+                                }
                                 val baseColor = if (isDarkMode) Color.Black else Color.White
                                 
                                 Surface(
-                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(if (index == 2) 3 else index) } },
                                     modifier = Modifier.weight(1f).height(44.dp).shadow(4.dp, shape),
                                     shape = shape,
                                     color = baseColor,
@@ -417,6 +434,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                         0 -> PaletteScreen(isDarkMode, hexInput, { hexInput = it }, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, hsvValue, { hsvValue = it; currentColor = ColorUtils.hsvToColor(it[0], it[1], it[2]); hexInput = ColorUtils.colorToHex(currentColor) }, colorItems, { color -> val hex = ColorUtils.colorToHex(color); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, currentLocale, { toggleLanguage() }, isSniperMode, { isSniperMode = !isSniperMode }, uiAccentColor)
                         1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorUtils.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorUtils.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(2) } }, currentLocale, uiAccentColor)
                         2 -> FavoritesScreen(isDarkMode, favorites, { favHex -> val favColor = ColorUtils.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } })
+                        3 -> PickerScreen(isDarkMode, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } }, uiAccentColor)
                     }
                 }
             }
@@ -424,6 +442,48 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     }
     if (showSettingsDialog) {
         SettingsDialog(isDarkMode, isCaosMode, analogousCount, fixedUiColorHex, favorites, { showSettingsDialog = false }, { caos, count, hex -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex } } })
+    }
+}
+
+@Composable
+fun PickerScreen(isDarkMode: Boolean, onColorSelect: (Color) -> Unit, uiAccentColor: Color) {
+    val context = LocalContext.current
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var detectedColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+    val launcher = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
+        if (uri != null) {
+            bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { d, _, _ -> d.isMutableRequired = true }
+            } else {
+                @Suppress("DEPRECATION")
+                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+            }
+        }
+    }
+    val buttonShape = RoundedCornerShape(12.dp); val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color.Black.copy(0.3f))
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.picker).uppercase(), style = TextStyle(color = if (isDarkMode) uiAccentColor else Color.Black, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp))
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().shadow(8.dp, buttonShape).clip(buttonShape).background(if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF5F5F5)).border(fineBorder, buttonShape), contentAlignment = Alignment.Center) {
+            if (bitmap != null) {
+                Canvas(modifier = Modifier.fillMaxSize().pointerInput(bitmap) { detectTapGestures { offset -> bitmap?.let { b -> val cW = size.width.toFloat(); val cH = size.height.toFloat(); val bW = b.width.toFloat(); val bH = b.height.toFloat(); val s = min(cW / bW, cH / bH); val dx = (cW - bW * s) / 2; val dy = (cH - bH * s) / 2; val x = ((offset.x - dx) / s).toInt(); val y = ((offset.y - dy) / s).toInt(); if (x in 0 until b.width && y in 0 until b.height) onColorSelect(Color(b.getPixel(x, y))) } } }) {
+                    bitmap?.let { b -> val cW = size.width; val cH = size.height; val bW = b.width.toFloat(); val bH = b.height.toFloat(); val s = min(cW / bW, cH / bH); val dx = (cW - bW * s) / 2; val dy = (cH - bH * s) / 2; drawImage(image = b.asImageBitmap(), dstOffset = IntOffset(dx.toInt(), dy.toInt()), dstSize = IntSize((bW * s).toInt(), (bH * s).toInt())) }
+                }
+            } else {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.AddPhotoAlternate, null, modifier = Modifier.size(64.dp), tint = Color.Gray); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.no_image), color = Color.Gray) }
+            }
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = { launcher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) }, modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, colors = ButtonDefaults.buttonColors(containerColor = uiAccentColor)) { Text(stringResource(R.string.select_image), fontWeight = FontWeight.Bold, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) }
+            if (bitmap != null) { Button(onClick = { Palette.from(bitmap!!).generate { p -> detectedColors = listOfNotNull(p?.vibrantSwatch?.rgb, p?.lightVibrantSwatch?.rgb, p?.darkVibrantSwatch?.rgb, p?.mutedSwatch?.rgb, p?.lightMutedSwatch?.rgb, p?.darkMutedSwatch?.rgb).map { Color(it) }.distinct() } }, modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, colors = ButtonDefaults.buttonColors(containerColor = if (isDarkMode) Color(0xFF333333) else Color(0xFFDDDDDD))) { Text(stringResource(R.string.detect_colors), fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.White else Color.Black) } }
+        }
+        if (detectedColors.isNotEmpty()) {
+            Text("Colores Detectados", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+            LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) { 
+                items(detectedColors) { color: Color -> 
+                    Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(color).border(2.dp, if (isDarkMode) Color.White.copy(0.5f) else Color.Black.copy(0.3f), CircleShape).clickable { onColorSelect(color) }) 
+                } 
+            }
+        }
     }
 }
 
