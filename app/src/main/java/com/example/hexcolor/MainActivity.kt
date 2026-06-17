@@ -67,6 +67,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -366,41 +367,59 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        gesturesEnabled = true,
         drawerContent = {
             ModalDrawerSheet(
-                drawerContainerColor = if (isDarkMode) Color(0xFF1A1A1A) else Color.White,
+                modifier = Modifier.width(280.dp),
+                drawerContainerColor = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFB2B9C1),
                 drawerShape = RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
             ) {
-                Spacer(Modifier.height(12.dp))
-                Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Image(painter = painterResource(id = R.drawable.icono_hex3), contentDescription = "Logo", modifier = Modifier.size(80.dp))
-                    Text("HEX COLOR", fontSize = 20.sp, fontWeight = FontWeight.Black, color = uiAccentColor)
+                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    Spacer(Modifier.height(8.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Image(painter = painterResource(id = R.drawable.icono_hex3), contentDescription = "Logo", modifier = Modifier.size(75.dp))
+                        Text(
+                            text = "HEX COLOR", 
+                            style = TextStyle(
+                                color = uiAccentColor,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 2.sp,
+                                shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(3f, 3f), blurRadius = 6f)
+                            )
+                        )
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
+                    
+                    val itemModifier = Modifier.height(48.dp).padding(horizontal = 8.dp)
+                    val labelStyle = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold)
+
+                    NavigationDrawerItem(label = { Text("Premium", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    NavigationDrawerItem(label = { Text("Modo Sniper", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close(); Toast.makeText(context, "¡Hazme Premium Bro! 🎯", Toast.LENGTH_LONG).show() } }, icon = { Icon(Icons.Default.CenterFocusStrong, contentDescription = null, tint = uiAccentColor, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.palette), style = labelStyle) }, selected = pagerState.currentPage == 0, onClick = { scope.launch { pagerState.animateScrollToPage(0); drawerState.close() } }, icon = { Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 0) Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100)) else Modifier))
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.wheel), style = labelStyle) }, selected = pagerState.currentPage == 1, onClick = { scope.launch { pagerState.animateScrollToPage(1); drawerState.close() } }, icon = { Icon(Icons.Default.ColorLens, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 1) Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100)) else Modifier))
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.picker), style = labelStyle) }, selected = pagerState.currentPage == 2, onClick = { scope.launch { pagerState.animateScrollToPage(2); drawerState.close() } }, icon = { Icon(Icons.Default.Colorize, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 2) Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100)) else Modifier))
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.favorites), style = labelStyle) }, selected = pagerState.currentPage == 3, onClick = { scope.launch { pagerState.animateScrollToPage(3); drawerState.close() } }, icon = { Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 3) Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100)) else Modifier))
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.import_palette), style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close(); importLauncher.launch("text/css") } }, icon = { Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
+                    NavigationDrawerItem(label = { Text("Ajustes", style = labelStyle) }, selected = false, onClick = { scope.launch { showSettingsDialog = true; drawerState.close() } }, icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    NavigationDrawerItem(label = { Text("Valóranos", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.ThumbUp, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    NavigationDrawerItem(label = { Text("Ayuda", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    Spacer(Modifier.height(24.dp))
                 }
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
-                NavigationDrawerItem(label = { Text("Premium", fontWeight = FontWeight.Bold) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = Color(0xFFFFD700)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
-                NavigationDrawerItem(label = { Text("Modo Sniper", fontWeight = FontWeight.Bold) }, selected = false, onClick = { scope.launch { drawerState.close(); Toast.makeText(context, "¡Hazme Premium Bro! 🎯", Toast.LENGTH_LONG).show() } }, icon = { Icon(Icons.Default.CenterFocusStrong, contentDescription = null, tint = uiAccentColor) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
-                NavigationDrawerItem(label = { Text(stringResource(R.string.palette)) }, selected = pagerState.currentPage == 0, onClick = { scope.launch { pagerState.animateScrollToPage(0); drawerState.close() } }, icon = { Icon(Icons.Default.Palette, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
-                NavigationDrawerItem(label = { Text(stringResource(R.string.wheel)) }, selected = pagerState.currentPage == 1, onClick = { scope.launch { pagerState.animateScrollToPage(1); drawerState.close() } }, icon = { Icon(Icons.Default.ColorLens, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
-                NavigationDrawerItem(label = { Text(stringResource(R.string.picker)) }, selected = pagerState.currentPage == 3, onClick = { scope.launch { pagerState.animateScrollToPage(3); drawerState.close() } }, icon = { Icon(Icons.Default.Colorize, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
-                NavigationDrawerItem(label = { Text(stringResource(R.string.favorites_header).take(9)) }, selected = pagerState.currentPage == 2, onClick = { scope.launch { pagerState.animateScrollToPage(2); drawerState.close() } }, icon = { Icon(Icons.Default.Star, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.1f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor))
-                NavigationDrawerItem(label = { Text(stringResource(R.string.import_palette)) }, selected = false, onClick = { scope.launch { drawerState.close(); importLauncher.launch("text/css") } }, icon = { Icon(Icons.Default.FileUpload, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
-                Spacer(Modifier.weight(1f))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
-                NavigationDrawerItem(label = { Text("Ajustes") }, selected = false, onClick = { scope.launch { showSettingsDialog = true; drawerState.close() } }, icon = { Icon(Icons.Default.Settings, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
-                NavigationDrawerItem(label = { Text("Valóranos") }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.ThumbUp, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
-                NavigationDrawerItem(label = { Text("Ayuda") }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.Help, contentDescription = null) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent))
-                Spacer(Modifier.height(12.dp))
             }
         }
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = if (isDarkMode) Color.Black else Color(0xFFFAFAFA),
+            containerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7),
             topBar = {
-                Column(modifier = Modifier.background(if (isDarkMode) Color.Black else Color(0xFFEEEEEE)).statusBarsPadding()) {
+                Column(modifier = Modifier.background(if (isDarkMode) Color.Black else Color(0xFFF2F4F7)).statusBarsPadding()) {
                     // Row 1: Menú + Logo + Título
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -420,44 +439,70 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                             text = "HEX COLOR",
                             style = TextStyle(
                                 color = uiAccentColor,
-                                fontSize = 18.sp,
+                                fontSize = 22.sp,
                                 fontWeight = FontWeight.Black,
-                                letterSpacing = 1.sp
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 3.sp,
+                                shadow = Shadow(
+                                    color = Color.Black.copy(alpha = if (isDarkMode) 0.6f else 0.3f),
+                                    offset = Offset(3f, 3f),
+                                    blurRadius = 6f
+                                )
                             )
                         )
                     }
 
-                    // Row 2: Botones de navegación (Tabs)
+                    // Franja decorativa superior (Efecto Metal Pulido)
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp)
+                        .background(Brush.verticalGradient(listOf(Color.Black.copy(0.3f), Color.Transparent)))
+                    )
+                    Box(modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.5.dp)
+                        .background(Brush.horizontalGradient(listOf(
+                            Color.Transparent, 
+                            Color(0xFF808080), 
+                            Color(0xFFE0E0E0), 
+                            Color(0xFFFFFFFF), 
+                            Color(0xFFE0E0E0), 
+                            Color(0xFF808080), 
+                            Color.Transparent
+                        )))
+                    )
+
+                    // Row 2: Botones de navegación (Tabs - Estáticos)
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val tabs = listOf(R.string.palette, R.string.wheel, R.string.picker)
+                        val tabs = listOf(R.string.palette, R.string.wheel, R.string.picker, R.string.favorites)
                         tabs.forEachIndexed { index, resId ->
-                            val isSelected = if (pagerState.currentPage == 2) false else (if (pagerState.currentPage == 3) index == 2 else pagerState.currentPage == index)
+                            val isSelected = pagerState.currentPage == index
                             val shape = RoundedCornerShape(12.dp)
                             val baseColor = if (isDarkMode) Color.Black else Color.White
                             
                             Surface(
-                                onClick = { scope.launch { pagerState.animateScrollToPage(if (index == 2) 3 else index) } },
-                                modifier = Modifier.weight(1f).height(40.dp).shadow(if(isSelected) 6.dp else 2.dp, shape),
+                                onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                modifier = Modifier.weight(1f).height(38.dp).shadow(if(isSelected) 6.dp else 2.dp, shape),
                                 shape = shape,
                                 color = baseColor,
-                                border = BorderStroke(1.dp, if (isSelected) uiAccentColor.copy(0.6f) else (if (isDarkMode) Color.White.copy(0.2f) else Color.Black.copy(0.1f)))
+                                border = BorderStroke(1.dp, if (isSelected) uiAccentColor.copy(0.6f) else (if (isDarkMode) Color.White.copy(0.2f) else Color(0xFFB2B9C1)))
                             ) {
                                 Box(modifier = Modifier
                                     .fillMaxSize()
-                                    .background(if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFF0F0F0)))
-                                    .background(Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent)))
+                                    .background(if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFD1D5D8)))
                                 ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Box(modifier = Modifier.fillMaxSize().padding(1.5.dp).border(1.dp, Color.Black.copy(0.15f), shape), contentAlignment = Alignment.Center) {
                                         Text(
                                             text = stringResource(resId).uppercase(),
-                                            color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray,
+                                            color = if (isSelected) Color.White else Color.Gray,
                                             fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 11.sp,
-                                            letterSpacing = 0.5.sp
+                                            fontSize = 8.sp,
+                                            letterSpacing = 0.5.sp,
+                                            maxLines = 1
                                         )
                                     }
                                 }
@@ -489,17 +534,17 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
             Column(modifier = Modifier.padding(innerPadding).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 HorizontalPager(state = pagerState, modifier = Modifier.weight(1f), verticalAlignment = Alignment.Top) { page ->
                     when (page) {
-                        0 -> PaletteScreen(isDarkMode, hexInput, { hexInput = it }, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, hsvValue, { hsvValue = it; currentColor = ColorUtils.hsvToColor(it[0], it[1], it[2]); hexInput = ColorUtils.colorToHex(currentColor) }, colorItems, { color -> val hex = ColorUtils.colorToHex(color); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, currentLocale, { toggleLanguage() }, isSniperMode, { isSniperMode = !isSniperMode }, uiAccentColor)
-                        1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorUtils.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorUtils.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(2) } }, currentLocale, uiAccentColor)
-                        2 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorUtils.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } })
-                        3 -> PickerScreen(isDarkMode, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } }, uiAccentColor)
+                        0 -> PaletteScreen(isDarkMode, hexInput, { hexInput = it }, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, hsvValue, { hsvValue = it; currentColor = ColorUtils.hsvToColor(it[0], it[1], it[2]); hexInput = ColorUtils.colorToHex(currentColor) }, colorItems, { color -> val hex = ColorUtils.colorToHex(color); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, isSniperMode, { isSniperMode = !isSniperMode }, uiAccentColor)
+                        1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorUtils.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorUtils.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(3) } }, currentLocale, uiAccentColor)
+                        2 -> PickerScreen(isDarkMode, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } }, uiAccentColor)
+                        3 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorUtils.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } })
                     }
                 }
             }
         }
     }
     if (showSettingsDialog) {
-        SettingsDialog(isDarkMode, isCaosMode, analogousCount, fixedUiColorHex, favorites, { showSettingsDialog = false }, { caos, count, hex -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex } } })
+        SettingsDialog(isDarkMode, onToggleDarkMode, currentLocale, { toggleLanguage() }, isCaosMode, analogousCount, fixedUiColorHex, favorites, { showSettingsDialog = false }, { caos, count, hex -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex } } })
     }
 }
 
@@ -508,19 +553,25 @@ fun PickerScreen(isDarkMode: Boolean, onColorSelect: (Color) -> Unit, uiAccentCo
     val context = LocalContext.current
     var bitmap by remember { mutableStateOf<Bitmap?>(null) }
     var detectedColors by remember { mutableStateOf<List<Color>>(emptyList()) }
-    val launcher = rememberLauncherForActivityResult(PickVisualMedia()) { uri ->
-        if (uri != null) {
-            bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { d, _, _ -> d.isMutableRequired = true }
-            } else {
-                @Suppress("DEPRECATION")
-                MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+    
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            bitmap = try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, it)) { d, _, _ -> d.isMutableRequired = true }
+                } else {
+                    @Suppress("DEPRECATION")
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, it)
+                }
+            } catch (e: Exception) {
+                null
             }
         }
     }
-    val buttonShape = RoundedCornerShape(12.dp); val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color.Black.copy(0.3f))
+    
+    val buttonShape = RoundedCornerShape(12.dp); val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color(0xFFD1D5D8))
     Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.picker).uppercase(), style = TextStyle(color = if (isDarkMode) uiAccentColor else Color.Black, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp))
+        Text(stringResource(R.string.picker).uppercase(), style = TextStyle(color = uiAccentColor, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp))
         Box(modifier = Modifier.weight(1f).fillMaxWidth().shadow(8.dp, buttonShape).clip(buttonShape).background(if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF5F5F5)).border(fineBorder, buttonShape), contentAlignment = Alignment.Center) {
             if (bitmap != null) {
                 Canvas(modifier = Modifier.fillMaxSize().pointerInput(bitmap) { detectTapGestures { offset -> bitmap?.let { b -> val cW = size.width.toFloat(); val cH = size.height.toFloat(); val bW = b.width.toFloat(); val bH = b.height.toFloat(); val s = min(cW / bW, cH / bH); val dx = (cW - bW * s) / 2; val dy = (cH - bH * s) / 2; val x = ((offset.x - dx) / s).toInt(); val y = ((offset.y - dy) / s).toInt(); if (x in 0 until b.width && y in 0 until b.height) onColorSelect(Color(b.getPixel(x, y))) } } }) {
@@ -531,7 +582,7 @@ fun PickerScreen(isDarkMode: Boolean, onColorSelect: (Color) -> Unit, uiAccentCo
             }
         }
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = { launcher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly)) }, modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, colors = ButtonDefaults.buttonColors(containerColor = uiAccentColor)) { Text(stringResource(R.string.select_image), fontWeight = FontWeight.Bold, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) }
+            Button(onClick = { launcher.launch("image/*") }, modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, colors = ButtonDefaults.buttonColors(containerColor = uiAccentColor)) { Text(stringResource(R.string.select_image), fontWeight = FontWeight.Bold, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) }
             if (bitmap != null) { Button(onClick = { Palette.from(bitmap!!).generate { p -> detectedColors = listOfNotNull(p?.vibrantSwatch?.rgb, p?.lightVibrantSwatch?.rgb, p?.darkVibrantSwatch?.rgb, p?.mutedSwatch?.rgb, p?.lightMutedSwatch?.rgb, p?.darkMutedSwatch?.rgb).map { Color(it) }.distinct() } }, modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, colors = ButtonDefaults.buttonColors(containerColor = if (isDarkMode) Color(0xFF333333) else Color(0xFFDDDDDD))) { Text(stringResource(R.string.detect_colors), fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.White else Color.Black) } }
         }
         if (detectedColors.isNotEmpty()) {
@@ -546,21 +597,16 @@ fun PickerScreen(isDarkMode: Boolean, onColorSelect: (Color) -> Unit, uiAccentCo
 }
 
 @Composable
-fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -> Unit, currentColor: Color, onColorChange: (Color) -> Unit, hsvValue: FloatArray, onHsvChange: (FloatArray) -> Unit, colorItems: List<ColorItem>, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, currentLocale: String, onToggleLanguage: () -> Unit, isSniperMode: Boolean, onSniperToggle: () -> Unit, uiAccentColor: Color) {
+fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -> Unit, currentColor: Color, onColorChange: (Color) -> Unit, hsvValue: FloatArray, onHsvChange: (FloatArray) -> Unit, colorItems: List<ColorItem>, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, isSniperMode: Boolean, onSniperToggle: () -> Unit, uiAccentColor: Color) {
     val context = LocalContext.current
     val buttonShape = RoundedCornerShape(12.dp)
     // Borde exterior más trabajado (un pelín más grueso y definido)
-    val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color.Black.copy(0.3f))
+    val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color(0xFFD1D5D8))
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) onSniperToggle() else Toast.makeText(context, "Permiso necesario", Toast.LENGTH_SHORT).show() }
     
     LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 150.dp), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
             Column(modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp)) {
-                    Text("HEX", style = TextStyle(color = if (isDarkMode) uiAccentColor else Color(0xFF1A1A1A), fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, fontFamily = FontFamily.SansSerif, letterSpacing = (-2).sp, shadow = Shadow(color = Color.Black.copy(alpha = 0.2f), offset = Offset(4f, 4f), blurRadius = 8f)))
-                    Image(painter = painterResource(id = R.drawable.icono_hex33), contentDescription = "HEX Logo", modifier = Modifier.size(85.dp).padding(horizontal = 4.dp))
-                    Text("COLOR", style = TextStyle(color = if (isDarkMode) Color.White else uiAccentColor, fontSize = 32.sp, fontWeight = FontWeight.Light, fontFamily = FontFamily.SansSerif, letterSpacing = 4.sp, shadow = Shadow(color = Color.Black.copy(alpha = 0.1f), offset = Offset(2f, 2f), blurRadius = 4f)))
-                }
                 if (isSniperMode) { Box(modifier = Modifier.fillMaxWidth().height(250.dp).clip(buttonShape)) { CameraSniper(onColorCaptured = onColorChange, onColorConfirmed = { onColorChange(it); Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() }); IconButton(onClick = onSniperToggle, modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).background(Color.Black.copy(alpha = 0.5f), CircleShape)) { Icon(Icons.Default.Close, "Close Sniper", tint = Color.White) } } }
                 
                 Row(modifier = Modifier.fillMaxWidth().height(50.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -571,8 +617,8 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                         placeholder = { Text("#RRGGBB", fontSize = 14.sp, color = Color.Gray) }, 
                         textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold), 
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF5F5F5),
-                            unfocusedContainerColor = if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF5F5F5),
+                            focusedContainerColor = if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF2F4F7),
+                            unfocusedContainerColor = if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF2F4F7),
                             focusedTextColor = if (isDarkMode) Color.White else Color.Black,
                             unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
                             focusedBorderColor = uiAccentColor.copy(0.5f),
@@ -595,10 +641,10 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                             .fillMaxSize()
                             .background(uiAccentColor, buttonShape)
                             .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.5.dp, Color.White.copy(0.3f), buttonShape), 
+                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.5.dp).border(1.2.dp, Color.Black.copy(0.25f), buttonShape), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
                                 Text(stringResource(R.string.show), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
                             }
                         }
@@ -607,24 +653,21 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                     // Botón SNIPER
                     IconButton(
                         onClick = { if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) onSniperToggle() else permissionLauncher.launch(android.Manifest.permission.CAMERA) }, 
-                        modifier = Modifier.size(50.dp).shadow(4.dp, buttonShape).background(if (isDarkMode) Color.Black else Color.White, buttonShape).border(fineBorder, buttonShape)
+                        modifier = Modifier.size(50.dp).shadow(4.dp, buttonShape)
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
                             .background(uiAccentColor, buttonShape)
                             .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.5.dp, Color.White.copy(0.3f), buttonShape), 
+                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.5.dp).border(1.2.dp, Color.Black.copy(0.25f), buttonShape), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
                                 Icon(Icons.Default.CameraAlt, "Sniper", tint = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
                             }
                         }
                     }
-                    TextButton(onClick = onToggleLanguage, modifier = Modifier.size(50.dp)) { Text(if (currentLocale == "es") "🇪🇸" else "🇺🇸", fontSize = 20.sp) }
                 }
-
-                // Slider de Hue con estilo mecanizado
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -671,10 +714,10 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                             .fillMaxSize()
                             .background(uiAccentColor, buttonShape)
                             .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.5.dp, Color.White.copy(0.3f), buttonShape), 
+                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.5.dp).border(1.2.dp, Color.Black.copy(0.25f), buttonShape), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
                                 Text(stringResource(R.string.random), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
                             }
                         }
@@ -691,10 +734,10 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                             .fillMaxSize()
                             .background(uiAccentColor, buttonShape)
                             .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.5.dp, Color.White.copy(0.3f), buttonShape), 
+                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.5.dp).border(1.2.dp, Color.Black.copy(0.25f), buttonShape), contentAlignment = Alignment.Center) {
+                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
                                 Text(stringResource(R.string.complementary), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)
                             }
                         }
@@ -826,7 +869,7 @@ private fun InfoCard(isDarkMode: Boolean, currentColor: Color, harmonyColors: Li
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FavoritesScreen(isDarkMode: Boolean, favorites: Set<String>, savedPalettes: Set<String>, onColorSelect: (String) -> Unit, onDeleteFavorite: (String) -> Unit, onDeletePalette: (String) -> Unit) {
-    val bgColor = if (isDarkMode) Color(0xFF141414) else Color(0xFFFAFAFA)
+    val bgColor = if (isDarkMode) Color(0xFF141414) else Color(0xFFF2F4F7)
     val cardColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
     val borderColor = if (isDarkMode) Color.White.copy(0.12f) else Color.Black.copy(0.08f)
     
@@ -911,9 +954,7 @@ fun FavoritesScreen(isDarkMode: Boolean, favorites: Set<String>, savedPalettes: 
                         Row(modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(8.dp)).border(1.dp, borderColor, RoundedCornerShape(8.dp))) {
                             palette.second.forEach { colorHex ->
                                 val color = ColorUtils.hexToColor(colorHex) ?: Color.Gray
-                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(color).clickable { onColorSelect(colorHex) }) {
-                                    Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent))))
-                                }
+                                Box(modifier = Modifier.weight(1f).fillMaxHeight().background(color).clickable { onColorSelect(colorHex) })
                             }
                         }
                     }
@@ -940,8 +981,50 @@ fun ExportDialog(harmonyColors: List<Color>, onDismiss: () -> Unit, currentColor
 }
 
 @Composable
-fun SettingsDialog(isDarkMode: Boolean, isCaosMode: Boolean, analogousCount: Int, fixedUiColorHex: String, favorites: Set<String>, onDismiss: () -> Unit, onUpdateSettings: (Boolean, Int, String) -> Unit) {
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Ajustes de Interfaz") }, containerColor = if (isDarkMode) Color(0xFF1A1A1A) else Color.White, text = { Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { Row(verticalAlignment = Alignment.CenterVertically) { Text("Modo Caos (Sincronizar)", modifier = Modifier.weight(1f)); Switch(checked = isCaosMode, onCheckedChange = { onUpdateSettings(it, analogousCount, fixedUiColorHex) }) }; HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f)); Column { Text("Número de análogos: $analogousCount"); Slider(value = analogousCount.toFloat(), onValueChange = { onUpdateSettings(isCaosMode, it.toInt(), fixedUiColorHex) }, valueRange = 5f..10f, steps = 4) }; HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f)); Column { Text("Color fijo de interfaz:"); Spacer(Modifier.height(8.dp)); LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { val colors = listOf("#268CEF", "#FFD700", "#FF5722", "#4CAF50") + favorites.toList(); items(colors) { hex -> val color = ColorUtils.hexToColor(hex) ?: Color.Gray; Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(color).border(if (hex == fixedUiColorHex) 3.dp else 1.dp, if (isDarkMode) Color.White else Color.Black, CircleShape).clickable { onUpdateSettings(isCaosMode, analogousCount, hex) }) } } } } }, confirmButton = { TextButton(onClick = onDismiss) { Text("Aceptar") } })
+fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLocale: String, onToggleLanguage: () -> Unit, isCaosMode: Boolean, analogousCount: Int, fixedUiColorHex: String, favorites: Set<String>, onDismiss: () -> Unit, onUpdateSettings: (Boolean, Int, String) -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss, 
+        title = { Text("Ajustes de Interfaz") }, 
+        containerColor = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFB2B9C1), 
+        text = { 
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { 
+                // Tema y Lenguaje
+                Row(verticalAlignment = Alignment.CenterVertically) { 
+                    Text(stringResource(R.string.dark_mode), modifier = Modifier.weight(1f))
+                    Switch(checked = isDarkMode, onCheckedChange = { onToggleDarkMode() }) 
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) { 
+                    Text(stringResource(R.string.language), modifier = Modifier.weight(1f))
+                    TextButton(onClick = onToggleLanguage) { 
+                        Text(if (currentLocale == "es") "Español 🇪🇸" else "English 🇺🇸", fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.White else Color.Black) 
+                    }
+                }
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                Row(verticalAlignment = Alignment.CenterVertically) { 
+                    Text("Modo Caos (Sincronizar)", modifier = Modifier.weight(1f))
+                    Switch(checked = isCaosMode, onCheckedChange = { onUpdateSettings(it, analogousCount, fixedUiColorHex) }) 
+                }
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                Column { 
+                    Text("Número de análogos: $analogousCount")
+                    Slider(value = analogousCount.toFloat(), onValueChange = { onUpdateSettings(isCaosMode, it.toInt(), fixedUiColorHex) }, valueRange = 5f..10f, steps = 4) 
+                }
+                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
+                Column { 
+                    Text("Color fijo de interfaz:")
+                    Spacer(Modifier.height(8.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { 
+                        val colors = listOf("#268CEF", "#FFD700", "#FF5722", "#4CAF50") + favorites.toList()
+                        items(colors) { hex -> 
+                            val color = ColorUtils.hexToColor(hex) ?: Color.Gray
+                            Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(color).border(if (hex == fixedUiColorHex) 3.dp else 1.dp, if (isDarkMode) Color.White else Color.Black, CircleShape).clickable { onUpdateSettings(isCaosMode, analogousCount, hex) }) 
+                        } 
+                    } 
+                } 
+            } 
+        }, 
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Aceptar") } }
+    )
 }
 
 @Composable
@@ -1015,16 +1098,13 @@ fun ColorCard(isDarkMode: Boolean, item: ColorItem, onClick: () -> Unit, onLongC
     val isDark = ColorUtils.isDark(item.color); val textColor = if (isDark) Color.White else Color.Black
     val shape = RoundedCornerShape(18.dp)
     Box(modifier = Modifier.aspectRatio(1f).shadow(6.dp, shape).clip(shape).background(item.color).border(1.2.dp, if (isDarkMode) Color.White.copy(0.35f) else Color.Black.copy(0.3f), shape).combinedClickable(onClick = onClick, onLongClick = onLongClick)) { 
-        // Efecto Pantalla (Mini Screen) REFORZADO - Capa 1: Cristal y Bisel
-        Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(0.3f), Color.Transparent))).border(2.dp, Color.White.copy(0.3f), shape)) {
-            // Capa 2: Profundidad Negra (el "marco" que evita que el color se coma el borde)
-            Box(modifier = Modifier.fillMaxSize().padding(3.5.dp).border(1.5.dp, Color.Black.copy(0.3f), shape)) {
-                Column(modifier = Modifier.padding(10.dp)) { 
-                    Text(text = item.title, color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold); 
-                    Spacer(modifier = Modifier.height(4.dp)); 
-                    Text(text = ColorUtils.colorToHex(item.color).uppercase(), color = textColor, fontSize = 16.sp, fontWeight = FontWeight.Medium); 
-                    Text(text = "(${String.format(Locale.US, "%.2f", item.color.red)}, ${String.format(Locale.US, "%.2f", item.color.green)}, ${String.format(Locale.US, "%.2f", item.color.blue)}, 1)", color = textColor, fontSize = 11.sp) 
-                } 
+        // Capa de marco para profundidad
+        Box(modifier = Modifier.fillMaxSize().padding(3.5.dp).border(1.5.dp, Color.Black.copy(0.3f), shape)) {
+            Column(modifier = Modifier.padding(10.dp)) { 
+                Text(text = item.title, color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold); 
+                Spacer(modifier = Modifier.height(4.dp)); 
+                Text(text = ColorUtils.colorToHex(item.color).uppercase(), color = textColor, fontSize = 16.sp, fontWeight = FontWeight.Medium); 
+                Text(text = "(${String.format(Locale.US, "%.2f", item.color.red)}, ${String.format(Locale.US, "%.2f", item.color.green)}, ${String.format(Locale.US, "%.2f", item.color.blue)}, 1)", color = textColor, fontSize = 11.sp) 
             }
         }
     }

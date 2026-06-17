@@ -29,4 +29,8 @@
     <string name="delete_palette">Eliminar Paleta</string>
     <string name="no_palettes">No hay paletas guardadas</string>
     <string name="palettes_tab">Mis Paletas</string>
+    <string name="favorites">Favoritos</string>
+    <string name="theme">Tema</string>
+    <string name="dark_mode">Modo Oscuro</string>
+    <string name="language">Idioma</string>
 </resources>
