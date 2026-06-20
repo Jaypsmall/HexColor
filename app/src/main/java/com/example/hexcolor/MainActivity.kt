@@ -110,8 +110,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val context = LocalContext.current
+            val colorBlindnessKey = remember { stringPreferencesKey("color_blindness_mode") }
+            val colorBlindnessMode by context.dataStore.data.map { it[colorBlindnessKey] ?: "None" }.collectAsState(initial = "None")
+            
             var isDarkMode by rememberSaveable { mutableStateOf(true) }
-            HexColorTheme(darkTheme = isDarkMode) {
+            HexColorTheme(darkTheme = isDarkMode, colorBlindnessMode = colorBlindnessMode) {
                 HexColorApp(isDarkMode = isDarkMode, onToggleDarkMode = { isDarkMode = !isDarkMode })
             }
         }
@@ -199,28 +203,42 @@ object ColorUtils {
     }
 
     fun simulateColorBlindness(color: Color, type: String): Color {
-        val r = color.red; val g = color.green; val b = color.blue
-        return when (type) {
-            "Protanopia" -> {
-                val nr = 0.56667f * r + 0.43333f * g + 0f * b
-                val ng = 0.55833f * r + 0.44167f * g + 0f * b
-                val nb = 0f * r + 0.24167f * g + 0.75833f * b
-                Color(nr.coerceIn(0f, 1f), ng.coerceIn(0f, 1f), nb.coerceIn(0f, 1f))
-            }
-            "Deuteranopia" -> {
-                val nr = 0.625f * r + 0.375f * g + 0f * b
-                val ng = 0.7f * r + 0.3f * g + 0f * b
-                val nb = 0f * r + 0.3f * g + 0.7f * b
-                Color(nr.coerceIn(0f, 1f), ng.coerceIn(0f, 1f), nb.coerceIn(0f, 1f))
-            }
-            "Tritanopia" -> {
-                val nr = 0.95f * r + 0.05f * g + 0f * b
-                val ng = 0f * r + 0.43333f * g + 0.56667f * b
-                val nb = 0f * r + 0.475f * g + 0.525f * b
-                Color(nr.coerceIn(0f, 1f), ng.coerceIn(0f, 1f), nb.coerceIn(0f, 1f))
-            }
-            else -> color
+        if (type == "None") return color
+        
+        // sRGB to Linear
+        fun toLinear(c: Float): Float = if (c <= 0.04045f) c / 12.92f else ((c + 0.055f) / 1.055f).pow(2.4f)
+        // Linear to sRGB
+        fun fromLinear(c: Float): Float = if (c <= 0.0031308f) c * 12.92f else 1.055f * c.pow(1f / 2.4f) - 0.055f
+
+        val rL = toLinear(color.red)
+        val gL = toLinear(color.green)
+        val bL = toLinear(color.blue)
+
+        val (nrL, ngL, nbL) = when (type) {
+            "Protanopia" -> Triple(
+                0.56667f * rL + 0.43333f * gL + 0f * bL,
+                0.55833f * rL + 0.44167f * gL + 0f * bL,
+                0f * rL + 0.24167f * gL + 0.75833f * bL
+            )
+            "Deuteranopia" -> Triple(
+                0.625f * rL + 0.375f * gL + 0f * bL,
+                0.7f * rL + 0.3f * gL + 0f * bL,
+                0f * rL + 0.3f * gL + 0.7f * bL
+            )
+            "Tritanopia" -> Triple(
+                1.01f * rL + 0.02f * gL - 0.03f * bL,
+                0.10f * rL + 0.73f * gL + 0.17f * bL,
+                0f * rL + 0.85f * gL + 0.15f * bL
+            )
+            else -> Triple(rL, gL, bL)
         }
+
+        return Color(
+            fromLinear(nrL).coerceIn(0f, 1f),
+            fromLinear(ngL).coerceIn(0f, 1f),
+            fromLinear(nbL).coerceIn(0f, 1f),
+            color.alpha
+        )
     }
 }
 
@@ -236,26 +254,48 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
 
     val favoritesKey = remember { stringSetPreferencesKey("fav_colors") }
     val palettesKey = remember { stringSetPreferencesKey("user_palettes") } // Almacena paletas como JSON: {"name": "X", "colors": ["#111", "#222"]}
+    val colorBlindnessKey = remember { stringPreferencesKey("color_blindness_mode") }
     val caosModeKey = remember { booleanPreferencesKey("caos_mode") }
     val analogousCountKey = remember { intPreferencesKey("analogous_count") }
     val fixedUiColorKey = remember { stringPreferencesKey("fixed_ui_color") }
 
     val settingsFlow = remember { 
         context.dataStore.data.map { prefs ->
-            Triple(
-                prefs[caosModeKey] ?: true,
-                prefs[analogousCountKey] ?: 7,
-                prefs[fixedUiColorKey] ?: "#268CEF"
-            )
+            val caos = prefs[caosModeKey] ?: true
+            val count = prefs[analogousCountKey] ?: 7
+            val hex = prefs[fixedUiColorKey] ?: "#268CEF"
+            val blind = prefs[colorBlindnessKey] ?: "None"
+            listOf(caos, count, hex, blind)
         } 
     }
-    val settings by settingsFlow.collectAsState(initial = Triple(true, 7, "#268CEF"))
-    val isCaosMode = settings.first
-    val analogousCount = settings.second
-    val fixedUiColorHex = settings.third
+    val settings by settingsFlow.collectAsState(initial = listOf(true, 7, "#268CEF", "None"))
+    val isCaosMode = settings[0] as Boolean
+    val analogousCount = settings[1] as Int
+    val fixedUiColorHex = settings[2] as String
+    val colorBlindnessMode = settings[3] as String
     val fixedUiColor = ColorUtils.hexToColor(fixedUiColorHex) ?: Color(0xFF268CEF)
+    
+    var hexInput by remember { mutableStateOf("#21DD10") }
+    var currentColor by remember { mutableStateOf(Color(0xFF21DD10)) }
+    
+    var hsvValue by remember {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(currentColor.toArgb(), hsv)
+        mutableStateOf(hsv)
+    }
 
-    // FIX Status Bar visibility bug
+    var pickerBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var detectedPickerColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+
+    var harmonyMode by remember { mutableStateOf(HarmonyMode.COMPLEMENTARY) }
+    var isSniperMode by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    val uiAccentColorRaw = if (isCaosMode) {
+        // Para la UI usamos el color actual pero siempre con brillo máximo para que no se apague la interfaz
+        ColorUtils.hsvToColor(hsvValue[0], hsvValue[1], 1f)
+    } else fixedUiColor
+    val uiAccentColor = if (colorBlindnessMode == "None") uiAccentColorRaw else ColorUtils.simulateColorBlindness(uiAccentColorRaw, colorBlindnessMode)
     val statusView = androidx.compose.ui.platform.LocalView.current
     SideEffect {
         val window = (context as android.app.Activity).window
@@ -283,21 +323,6 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     
     val palettesFlow = remember { context.dataStore.data.map { it[palettesKey] ?: emptySet() } }
     val savedPalettes by palettesFlow.collectAsState(initial = emptySet())
-
-    var hexInput by remember { mutableStateOf("#21DD10") }
-    var currentColor by remember { mutableStateOf(Color(0xFF21DD10)) }
-    
-    val uiAccentColor = if (isCaosMode) currentColor else fixedUiColor
-    
-    var hsvValue by remember {
-        val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(currentColor.toArgb(), hsv)
-        mutableStateOf(hsv)
-    }
-
-    var harmonyMode by remember { mutableStateOf(HarmonyMode.COMPLEMENTARY) }
-    var isSniperMode by remember { mutableStateOf(false) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
 
     val harmonyColors = remember(currentColor, harmonyMode, analogousCount) {
         when (harmonyMode) {
@@ -371,7 +396,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         drawerContent = {
             ModalDrawerSheet(
                 modifier = Modifier.width(280.dp),
-                drawerContainerColor = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFB2B9C1),
+                drawerContainerColor = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFE0E6ED),
                 drawerShape = RoundedCornerShape(topEnd = 18.dp, bottomEnd = 18.dp)
             ) {
                 Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -417,9 +442,9 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7),
+            containerColor = if (isDarkMode) Color(0xFF121212) else Color(0xFFF2F4F7),
             topBar = {
-                Column(modifier = Modifier.background(if (isDarkMode) Color.Black else Color(0xFFF2F4F7)).statusBarsPadding()) {
+                Column(modifier = Modifier.background(if (isDarkMode) Color(0xFF121212) else Color(0xFFF2F4F7)).statusBarsPadding()) {
                     // Row 1: Menú + Logo + Título
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
@@ -488,23 +513,22 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                                 onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                                 modifier = Modifier.weight(1f).height(38.dp).shadow(if(isSelected) 6.dp else 2.dp, shape),
                                 shape = shape,
-                                color = baseColor,
-                                border = BorderStroke(1.dp, if (isSelected) uiAccentColor.copy(0.6f) else (if (isDarkMode) Color.White.copy(0.2f) else Color(0xFFB2B9C1)))
+                                color = if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFD1D5D8)),
+                                border = BorderStroke(1.dp, if (isSelected) Color.White.copy(0.5f) else (if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.1f)))
                             ) {
                                 Box(modifier = Modifier
                                     .fillMaxSize()
-                                    .background(if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFD1D5D8)))
+                                    .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                                    contentAlignment = Alignment.Center
                                 ) {
-                                    Box(modifier = Modifier.fillMaxSize().padding(1.5.dp).border(1.dp, Color.Black.copy(0.15f), shape), contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = stringResource(resId).uppercase(),
-                                            color = if (isSelected) Color.White else Color.Gray,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            fontSize = 8.sp,
-                                            letterSpacing = 0.5.sp,
-                                            maxLines = 1
-                                        )
-                                    }
+                                    Text(
+                                        text = stringResource(resId).uppercase(),
+                                        color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 8.sp,
+                                        letterSpacing = 0.5.sp,
+                                        maxLines = 1
+                                    )
                                 }
                             }
                         }
@@ -534,9 +558,108 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
             Column(modifier = Modifier.padding(innerPadding).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 HorizontalPager(state = pagerState, modifier = Modifier.weight(1f), verticalAlignment = Alignment.Top) { page ->
                     when (page) {
-                        0 -> PaletteScreen(isDarkMode, hexInput, { hexInput = it }, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, hsvValue, { hsvValue = it; currentColor = ColorUtils.hsvToColor(it[0], it[1], it[2]); hexInput = ColorUtils.colorToHex(currentColor) }, colorItems, { color -> val hex = ColorUtils.colorToHex(color); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, isSniperMode, { isSniperMode = !isSniperMode }, uiAccentColor)
-                        1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> clipboardManager.setText(AnnotatedString(ColorUtils.colorToHex(color))); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorUtils.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorUtils.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(3) } }, currentLocale, uiAccentColor)
-                        2 -> PickerScreen(isDarkMode, { currentColor = it; hexInput = ColorUtils.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } }, uiAccentColor)
+                        0 -> PaletteScreen(
+                            isDarkMode, 
+                            hexInput, 
+                            { hexInput = it }, 
+                            currentColor, 
+                            { 
+                                currentColor = it
+                                hexInput = ColorUtils.colorToHex(it)
+                                val h = FloatArray(3)
+                                android.graphics.Color.colorToHSV(it.toArgb(), h)
+                                hsvValue = h 
+                            }, 
+                            hsvValue, 
+                            { hsvValue = it; currentColor = ColorUtils.hsvToColor(it[0], it[1], it[2]); hexInput = ColorUtils.colorToHex(currentColor) }, 
+                            colorItems, 
+                            { color -> 
+                                val hex = ColorUtils.colorToHex(if (colorBlindnessMode == "None") color else ColorUtils.simulateColorBlindness(color, colorBlindnessMode))
+                                scope.launch { 
+                                    context.dataStore.edit { prefs -> 
+                                        val current = prefs[favoritesKey] ?: emptySet()
+                                        prefs[favoritesKey] = current + hex 
+                                    }
+                                    Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show()
+                                } 
+                            }, 
+                            { color -> 
+                                val displayColor = if (colorBlindnessMode == "None") color else ColorUtils.simulateColorBlindness(color, colorBlindnessMode)
+                                val hex = ColorUtils.colorToHex(displayColor)
+                                val rgb = "(${String.format(Locale.US, "%.2f", displayColor.red)}, ${String.format(Locale.US, "%.2f", displayColor.green)}, ${String.format(Locale.US, "%.2f", displayColor.blue)}, 1)"
+                                clipboardManager.setText(AnnotatedString("$hex $rgb"))
+                                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() 
+                            }, 
+                            isSniperMode, 
+                            { isSniperMode = !isSniperMode }, 
+                            uiAccentColor, 
+                            colorBlindnessMode
+                        )
+                        1 -> WheelScreen(
+                            isDarkMode, 
+                            onToggleDarkMode, 
+                            currentColor, 
+                            { 
+                                currentColor = it
+                                hexInput = ColorUtils.colorToHex(it)
+                                val h = FloatArray(3)
+                                android.graphics.Color.colorToHSV(it.toArgb(), h)
+                                hsvValue = h 
+                            }, 
+                            { color -> 
+                                val displayColor = if (colorBlindnessMode == "None") color else ColorUtils.simulateColorBlindness(color, colorBlindnessMode)
+                                val hex = ColorUtils.colorToHex(displayColor)
+                                val rgb = "(${String.format(Locale.US, "%.2f", displayColor.red)}, ${String.format(Locale.US, "%.2f", displayColor.green)}, ${String.format(Locale.US, "%.2f", displayColor.blue)}, 1)"
+                                clipboardManager.setText(AnnotatedString("$hex $rgb"))
+                                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() 
+                            }, 
+                            harmonyMode, 
+                            { harmonyMode = it }, 
+                            harmonyColors, 
+                            hsvValue, 
+                            analogousCount, 
+                            { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorUtils.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorUtils.colorToHex(currentColor) }, 
+                            { scope.launch { pagerState.animateScrollToPage(3) } }, 
+                            currentLocale, 
+                            uiAccentColor, 
+                            colorBlindnessMode, 
+                            { blind -> scope.launch { context.dataStore.edit { it[colorBlindnessKey] = blind } } }
+                        )
+                        2 -> PickerScreen(
+                            isDarkMode = isDarkMode,
+                            bitmap = pickerBitmap,
+                            onBitmapChange = { pickerBitmap = it },
+                            detectedColors = detectedPickerColors,
+                            onDetectedColorsChange = { detectedPickerColors = it },
+                            onColorSelect = { 
+                                val selected = if (colorBlindnessMode == "None") it else ColorUtils.simulateColorBlindness(it, colorBlindnessMode)
+                                currentColor = selected
+                                hexInput = ColorUtils.colorToHex(selected)
+                                val h = FloatArray(3)
+                                android.graphics.Color.colorToHSV(selected.toArgb(), h)
+                                hsvValue = h
+                                scope.launch { pagerState.animateScrollToPage(1) } 
+                            },
+                            uiAccentColor = uiAccentColor,
+                            colorBlindnessMode = colorBlindnessMode,
+                            onSaveFavorite = { color -> 
+                                val hex = ColorUtils.colorToHex(if (colorBlindnessMode == "None") color else ColorUtils.simulateColorBlindness(color, colorBlindnessMode))
+                                scope.launch { 
+                                    context.dataStore.edit { prefs -> 
+                                        val current = prefs[favoritesKey] ?: emptySet()
+                                        prefs[favoritesKey] = current + hex 
+                                    }
+                                    Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show()
+                                } 
+                            },
+                            onCopyColor = { color -> 
+                                val displayColor = if (colorBlindnessMode == "None") color else ColorUtils.simulateColorBlindness(color, colorBlindnessMode)
+                                val hex = ColorUtils.colorToHex(displayColor)
+                                val rgb = "(${String.format(Locale.US, "%.2f", displayColor.red)}, ${String.format(Locale.US, "%.2f", displayColor.green)}, ${String.format(Locale.US, "%.2f", displayColor.blue)}, 1)"
+                                clipboardManager.setText(AnnotatedString("$hex $rgb"))
+                                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                            }
+                        )
                         3 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorUtils.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } })
                     }
                 }
@@ -544,19 +667,29 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         }
     }
     if (showSettingsDialog) {
-        SettingsDialog(isDarkMode, onToggleDarkMode, currentLocale, { toggleLanguage() }, isCaosMode, analogousCount, fixedUiColorHex, favorites, { showSettingsDialog = false }, { caos, count, hex -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex } } })
+        SettingsDialog(isDarkMode, onToggleDarkMode, currentLocale, { toggleLanguage() }, isCaosMode, analogousCount, fixedUiColorHex, colorBlindnessMode, favorites, { showSettingsDialog = false }, { caos, count, hex, blind -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex; prefs[colorBlindnessKey] = blind } } })
     }
 }
 
 @Composable
-fun PickerScreen(isDarkMode: Boolean, onColorSelect: (Color) -> Unit, uiAccentColor: Color) {
+fun PickerScreen(
+    isDarkMode: Boolean, 
+    bitmap: Bitmap?, 
+    onBitmapChange: (Bitmap?) -> Unit, 
+    detectedColors: List<Color>, 
+    onDetectedColorsChange: (List<Color>) -> Unit, 
+    onColorSelect: (Color) -> Unit, 
+    uiAccentColor: Color, 
+    colorBlindnessMode: String,
+    onSaveFavorite: (Color) -> Unit,
+    onCopyColor: (Color) -> Unit
+) {
     val context = LocalContext.current
-    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var detectedColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+    var showExportDialog by remember { mutableStateOf(false) }
     
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
-            bitmap = try {
+            val b = try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                     ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, it)) { d, _, _ -> d.isMutableRequired = true }
                 } else {
@@ -566,44 +699,123 @@ fun PickerScreen(isDarkMode: Boolean, onColorSelect: (Color) -> Unit, uiAccentCo
             } catch (e: Exception) {
                 null
             }
+            onBitmapChange(b)
+            onDetectedColorsChange(emptyList())
         }
     }
     
     val buttonShape = RoundedCornerShape(12.dp); val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color(0xFFD1D5D8))
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(stringResource(R.string.picker).uppercase(), style = TextStyle(color = uiAccentColor, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp))
-        Box(modifier = Modifier.weight(1f).fillMaxWidth().shadow(8.dp, buttonShape).clip(buttonShape).background(if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF5F5F5)).border(fineBorder, buttonShape), contentAlignment = Alignment.Center) {
-            if (bitmap != null) {
-                Canvas(modifier = Modifier.fillMaxSize().pointerInput(bitmap) { detectTapGestures { offset -> bitmap?.let { b -> val cW = size.width.toFloat(); val cH = size.height.toFloat(); val bW = b.width.toFloat(); val bH = b.height.toFloat(); val s = min(cW / bW, cH / bH); val dx = (cW - bW * s) / 2; val dy = (cH - bH * s) / 2; val x = ((offset.x - dx) / s).toInt(); val y = ((offset.y - dy) / s).toInt(); if (x in 0 until b.width && y in 0 until b.height) onColorSelect(Color(b.getPixel(x, y))) } } }) {
-                    bitmap?.let { b -> val cW = size.width; val cH = size.height; val bW = b.width.toFloat(); val bH = b.height.toFloat(); val s = min(cW / bW, cH / bH); val dx = (cW - bW * s) / 2; val dy = (cH - bH * s) / 2; drawImage(image = b.asImageBitmap(), dstOffset = IntOffset(dx.toInt(), dy.toInt()), dstSize = IntSize((bW * s).toInt(), (bH * s).toInt())) }
+    
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 150.dp),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(stringResource(R.string.picker).uppercase(), style = TextStyle(color = uiAccentColor, fontSize = 24.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp))
+                Box(modifier = Modifier.height(300.dp).fillMaxWidth().shadow(8.dp, buttonShape).clip(buttonShape).background(if (isDarkMode) Color(0xFF0A0A0A) else Color(0xFFF5F5F5)).border(fineBorder, buttonShape), contentAlignment = Alignment.Center) {
+                    if (bitmap != null) {
+                        Canvas(modifier = Modifier.fillMaxSize().pointerInput(bitmap) { detectTapGestures { offset -> bitmap.let { b -> val cW = size.width.toFloat(); val cH = size.height.toFloat(); val bW = b.width.toFloat(); val bH = b.height.toFloat(); val s = min(cW / bW, cH / bH); val dx = (cW - bW * s) / 2; val dy = (cH - bH * s) / 2; val x = ((offset.x - dx) / s).toInt(); val y = ((offset.y - dy) / s).toInt(); if (x in 0 until b.width && y in 0 until b.height) onColorSelect(Color(b.getPixel(x, y))) } } }) {
+                            bitmap.let { b -> val cW = size.width; val cH = size.height; val bW = b.width.toFloat(); val bH = b.height.toFloat(); val s = min(cW / bW, cH / bH); val dx = (cW - bW * s) / 2; val dy = (cH - bH * s) / 2; drawImage(image = b.asImageBitmap(), dstOffset = IntOffset(dx.toInt(), dy.toInt()), dstSize = IntSize((bW * s).toInt(), (bH * s).toInt())) }
+                        }
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.AddPhotoAlternate, null, modifier = Modifier.size(64.dp), tint = Color.Gray); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.no_image), color = Color.Gray) }
+                    }
                 }
-            } else {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.AddPhotoAlternate, null, modifier = Modifier.size(64.dp), tint = Color.Gray); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.no_image), color = Color.Gray) }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Surface(
+                        onClick = { launcher.launch("image/*") },
+                        modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape),
+                        shape = buttonShape,
+                        color = uiAccentColor,
+                        border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.2f) else Color.Black.copy(0.1f))
+                    ) {
+                        Box(modifier = Modifier
+                            .fillMaxSize()
+                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(stringResource(R.string.select_image), fontWeight = FontWeight.Bold, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)
+                        }
+                    }
+                    
+                    if (bitmap != null) {
+                        Surface(
+                            onClick = { 
+                                Palette.from(bitmap).generate { p -> 
+                                    onDetectedColorsChange(listOfNotNull(p?.vibrantSwatch?.rgb, p?.lightVibrantSwatch?.rgb, p?.darkVibrantSwatch?.rgb, p?.mutedSwatch?.rgb, p?.lightMutedSwatch?.rgb, p?.darkMutedSwatch?.rgb).map { Color(it) }.distinct()) 
+                                } 
+                            },
+                            modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape),
+                            shape = buttonShape,
+                            color = if (isDarkMode) Color(0xFF333333) else Color(0xFFDDDDDD),
+                            border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.05f))
+                        ) {
+                            Box(modifier = Modifier
+                                .fillMaxSize()
+                                .background(Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent))),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(stringResource(R.string.detect_colors), fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.White else Color.Black)
+                            }
+                        }
+                    }
+                }
+                
+                if (detectedColors.isNotEmpty()) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Colores Detectados", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
+                        Surface(
+                            onClick = { showExportDialog = true },
+                            modifier = Modifier.size(42.dp).shadow(2.dp, CircleShape),
+                            shape = CircleShape,
+                            color = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFEEEEEE),
+                            border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.05f))
+                        ) {
+                            Box(modifier = Modifier
+                                .fillMaxSize()
+                                .background(Brush.verticalGradient(listOf(Color.White.copy(0.1f), Color.Transparent))),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(Icons.Default.Share, "Export Palette", tint = uiAccentColor, modifier = Modifier.size(20.dp))
+                            }
+                        }
+                    }
+                }
             }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = { launcher.launch("image/*") }, modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, colors = ButtonDefaults.buttonColors(containerColor = uiAccentColor)) { Text(stringResource(R.string.select_image), fontWeight = FontWeight.Bold, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) }
-            if (bitmap != null) { Button(onClick = { Palette.from(bitmap!!).generate { p -> detectedColors = listOfNotNull(p?.vibrantSwatch?.rgb, p?.lightVibrantSwatch?.rgb, p?.darkVibrantSwatch?.rgb, p?.mutedSwatch?.rgb, p?.lightMutedSwatch?.rgb, p?.darkMutedSwatch?.rgb).map { Color(it) }.distinct() } }, modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, colors = ButtonDefaults.buttonColors(containerColor = if (isDarkMode) Color(0xFF333333) else Color(0xFFDDDDDD))) { Text(stringResource(R.string.detect_colors), fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.White else Color.Black) } }
-        }
-        if (detectedColors.isNotEmpty()) {
-            Text("Colores Detectados", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.Gray)
-            LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(horizontal = 4.dp)) { 
-                items(detectedColors) { color: Color -> 
-                    Box(modifier = Modifier.size(50.dp).clip(CircleShape).background(color).border(2.dp, if (isDarkMode) Color.White.copy(0.5f) else Color.Black.copy(0.3f), CircleShape).clickable { onColorSelect(color) }) 
-                } 
-            }
+        
+        items(detectedColors) { color ->
+            ColorCard(
+                isDarkMode = isDarkMode,
+                item = ColorItem("Extraído", color),
+                colorBlindnessMode = colorBlindnessMode,
+                onLongClick = { onSaveFavorite(color) },
+                onClick = { onColorSelect(color) }
+            )
         }
     }
+    
+    if (showExportDialog) ExportDialog(harmonyColors = detectedColors, onDismiss = { showExportDialog = false }, currentColor = uiAccentColor)
 }
 
 @Composable
-fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -> Unit, currentColor: Color, onColorChange: (Color) -> Unit, hsvValue: FloatArray, onHsvChange: (FloatArray) -> Unit, colorItems: List<ColorItem>, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, isSniperMode: Boolean, onSniperToggle: () -> Unit, uiAccentColor: Color) {
+fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -> Unit, currentColor: Color, onColorChange: (Color) -> Unit, hsvValue: FloatArray, onHsvChange: (FloatArray) -> Unit, colorItems: List<ColorItem>, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, isSniperMode: Boolean, onSniperToggle: () -> Unit, uiAccentColor: Color, colorBlindnessMode: String) {
     val context = LocalContext.current
     val buttonShape = RoundedCornerShape(12.dp)
     // Borde exterior más trabajado (un pelín más grueso y definido)
     val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color(0xFFD1D5D8))
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) onSniperToggle() else Toast.makeText(context, "Permiso necesario", Toast.LENGTH_SHORT).show() }
     
+    val hueGradientColors = remember(colorBlindnessMode) {
+        listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red).map {
+            if (colorBlindnessMode == "None") it else ColorUtils.simulateColorBlindness(it, colorBlindnessMode)
+        }
+    }
+
     LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 150.dp), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
             Column(modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -629,42 +841,35 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii)
                     )
                     
-                    // Botón MOSTRAR
-                    Button(
+                    Surface(
                         onClick = { val color = ColorUtils.hexToColor(hexInput); if (color != null) onColorChange(color) else Toast.makeText(context, context.getString(R.string.invalid_hex), Toast.LENGTH_SHORT).show() }, 
-                        modifier = Modifier.width(85.dp).fillMaxHeight().shadow(4.dp, buttonShape).border(fineBorder, buttonShape), 
+                        modifier = Modifier.width(85.dp).fillMaxHeight().shadow(4.dp, buttonShape), 
                         shape = buttonShape, 
-                        contentPadding = PaddingValues(0.dp), 
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                        color = uiAccentColor,
+                        border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(uiAccentColor, buttonShape)
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
+                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
-                                Text(stringResource(R.string.show), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
-                            }
+                            Text(stringResource(R.string.show), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
                         }
                     }
                     
-                    // Botón SNIPER
-                    IconButton(
+                    Surface(
                         onClick = { if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) onSniperToggle() else permissionLauncher.launch(android.Manifest.permission.CAMERA) }, 
-                        modifier = Modifier.size(50.dp).shadow(4.dp, buttonShape)
+                        modifier = Modifier.size(50.dp).shadow(4.dp, buttonShape),
+                        shape = buttonShape,
+                        color = uiAccentColor,
+                        border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(uiAccentColor, buttonShape)
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
+                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
-                                Icon(Icons.Default.CameraAlt, "Sniper", tint = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
-                            }
+                            Icon(Icons.Default.CameraAlt, "Sniper", tint = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
                         }
                     }
                 }
@@ -674,7 +879,7 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                         .height(32.dp)
                         .shadow(2.dp, RoundedCornerShape(16.dp))
                         .background(
-                            Brush.linearGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)), 
+                            Brush.linearGradient(hueGradientColors), 
                             RoundedCornerShape(16.dp)
                         )
                         .border(fineBorder, RoundedCornerShape(16.dp)),
@@ -702,73 +907,63 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                 }
 
                 Row(modifier = Modifier.fillMaxWidth().height(50.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    // Botón RANDOM
-                    Button(
+                    Surface(
                         onClick = { onColorChange(Color((0..255).random() / 255f, (0..255).random() / 255f, (0..255).random() / 255f)) }, 
-                        modifier = Modifier.weight(1f).fillMaxHeight().shadow(4.dp, buttonShape).border(fineBorder, buttonShape), 
+                        modifier = Modifier.weight(1f).fillMaxHeight().shadow(4.dp, buttonShape), 
                         shape = buttonShape, 
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                        color = uiAccentColor,
+                        border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(uiAccentColor, buttonShape)
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
+                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
-                                Text(stringResource(R.string.random), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
-                            }
+                            Text(stringResource(R.string.random), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
                         }
                     }
-                    // Botón COMPLEMENTARY
-                    Button(
+                    Surface(
                         onClick = { onColorChange(ColorUtils.getComplementary(currentColor)) }, 
-                        modifier = Modifier.weight(1f).fillMaxHeight().shadow(4.dp, buttonShape).border(fineBorder, buttonShape), 
+                        modifier = Modifier.weight(1f).fillMaxHeight().shadow(4.dp, buttonShape), 
                         shape = buttonShape, 
-                        contentPadding = PaddingValues(0.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent)
+                        color = uiAccentColor,
+                        border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(uiAccentColor, buttonShape)
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                            .border(1.2.dp, Color.White.copy(0.3f), buttonShape), 
+                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.2f), buttonShape), contentAlignment = Alignment.Center) {
-                                Text(stringResource(R.string.complementary), fontWeight = FontWeight.Bold, fontSize = 14.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)
-                            }
+                            Text(stringResource(R.string.complementary), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)
                         }
                     }
                 }
             }
         }
-        items(colorItems) { item -> ColorCard(isDarkMode = isDarkMode, item = item, onLongClick = { onSaveFavorite(item.color) }, onClick = { onCopyColor(item.color) }) }
+        items(colorItems) { item -> ColorCard(isDarkMode = isDarkMode, item = item, colorBlindnessMode = colorBlindnessMode, onLongClick = { onSaveFavorite(item.color) }, onClick = { onCopyColor(item.color) }) }
     }
 }
 
 @SuppressLint("ContextCastToActivity")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor: Color, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, harmonyColors: List<Color>, hsvValue: FloatArray, analogousCount: Int, onValueChange: (Float) -> Unit, onNavigateToFavorites: () -> Unit, currentLocale: String, uiAccentColor: Color) {
+fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor: Color, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, harmonyColors: List<Color>, hsvValue: FloatArray, analogousCount: Int, onValueChange: (Float) -> Unit, onNavigateToFavorites: () -> Unit, currentLocale: String, uiAccentColor: Color, colorBlindnessMode: String, onColorBlindnessChange: (String) -> Unit) {
     val activity = LocalContext.current as? MainActivity
     val modes = listOf(HarmonyMode.COMPLEMENTARY, HarmonyMode.TRIADIC, HarmonyMode.ANALOGOUS)
-    var cardOffset by remember { mutableStateOf(Offset(0f, 0f)) }; var blindnessType by remember { mutableStateOf("None") }; var showExportDialog by remember { mutableStateOf(false) }
+    var cardOffset by remember { mutableStateOf(Offset(0f, 0f)) }; var showExportDialog by remember { mutableStateOf(false) }
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isWide = maxWidth > 600.dp; val scrollState = rememberScrollState()
         if (isWide) {
             Row(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                Box(modifier = Modifier.weight(1.2f).fillMaxHeight(), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, blindnessType, { blindnessType = it }, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor) }
-                Column(modifier = Modifier.weight(1f).verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)) { HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor); BrightnessSlider(currentLocale, hsvValue[2], onValueChange, uiAccentColor); InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor) }
+                Box(modifier = Modifier.weight(1.2f).fillMaxHeight(), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor) }
+                Column(modifier = Modifier.weight(1f).verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)) { HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2]); BrightnessSlider(currentLocale, hsvValue[2], onValueChange, uiAccentColor); InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode) }
             }
         } else {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor)
-                Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).widthIn(max = 450.dp), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, blindnessType, { blindnessType = it }, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor) }
+                HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2])
+                Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).widthIn(max = 450.dp), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor) }
                 BrightnessSlider(currentLocale, hsvValue[2], onValueChange, uiAccentColor)
-                InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor)
+                InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode)
                 Spacer(modifier = Modifier.height(20.dp))
             }
         }
@@ -778,7 +973,7 @@ fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor:
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HeaderControls(modes: List<HarmonyMode>, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, isDarkMode: Boolean, onExport: () -> Unit, uiAccentColor: Color) {
+private fun HeaderControls(modes: List<HarmonyMode>, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, isDarkMode: Boolean, onExport: () -> Unit, uiAccentColor: Color, brightness: Float) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.weight(1f).height(42.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             modes.forEachIndexed { index, itemMode ->
@@ -790,41 +985,58 @@ private fun HeaderControls(modes: List<HarmonyMode>, harmonyMode: HarmonyMode, o
                     onClick = { onModeChange(itemMode) },
                     modifier = Modifier.weight(1f).fillMaxHeight().shadow(isSelected.let { if (it) 6.dp else 2.dp }, shape),
                     shape = shape,
-                    color = if (isDarkMode) Color.Black else Color.White,
-                    border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.35f) else Color.Black.copy(0.4f))
+                    color = if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF111111) else Color(0xFFE0E0E0)),
+                    border = BorderStroke(1.dp, if (isSelected) Color.White.copy(0.5f) else (if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.1f)))
                 ) {
                     Box(modifier = Modifier
                         .fillMaxSize()
-                        .background(if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF111111) else Color(0xFFE0E0E0)))
-                        .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))
-                        .border(1.2.dp, Color.White.copy(0.3f), shape), 
+                        .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent))),
                         contentAlignment = Alignment.Center
                     ) {
-                        Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.dp, Color.Black.copy(0.25f), shape), contentAlignment = Alignment.Center) {
-                            Text(label, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-                        }
+                        Text(label, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                 }
             }
         }
-        IconButton(onClick = onExport, modifier = Modifier.size(42.dp).background(if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFEEEEEE), CircleShape).border(1.dp, Color.White.copy(0.15f), CircleShape).shadow(2.dp, CircleShape)) { 
-            Icon(Icons.Default.Share, "Export", tint = uiAccentColor, modifier = Modifier.size(20.dp)) 
+        Surface(
+            onClick = onExport,
+            modifier = Modifier.size(42.dp).shadow(2.dp, CircleShape),
+            shape = CircleShape,
+            color = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFEEEEEE),
+            border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.05f))
+        ) {
+            Box(modifier = Modifier
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(Color.White.copy(0.1f), Color.Transparent))),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.Share, "Export", tint = uiAccentColor, modifier = Modifier.size(20.dp)) 
+            }
         }
     }
 }
 
 @Composable
-private fun WheelContent(isDarkMode: Boolean, blindnessType: String, onBlindnessChange: (String) -> Unit, currentColor: Color, hsvValue: FloatArray, harmonyMode: HarmonyMode, analogousCount: Int, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, onToggleDarkMode: () -> Unit, onNavigateToFavorites: () -> Unit, uiAccentColor: Color) {
-    val displayedColor = if (blindnessType == "None") currentColor else ColorUtils.simulateColorBlindness(currentColor, blindnessType)
-    var showBlindnessMenu by remember { mutableStateOf(false) }
+private fun WheelContent(isDarkMode: Boolean, colorBlindnessMode: String, onColorBlindnessChange: (String) -> Unit, currentColor: Color, hsvValue: FloatArray, harmonyMode: HarmonyMode, analogousCount: Int, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, onToggleDarkMode: () -> Unit, onNavigateToFavorites: () -> Unit, uiAccentColor: Color) {
     val brightness = hsvValue[2]; val moonResource = if (brightness > 0.5f) R.drawable.moon_light else R.drawable.moon_shadow
+    var showBlindnessMenu by remember { mutableStateOf(false) }
+    
     Box(contentAlignment = Alignment.Center) {
-        ColorWheel(isDarkMode, displayedColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, Modifier.fillMaxSize().padding(40.dp), uiAccentColor)
+        ColorWheel(isDarkMode, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, Modifier.fillMaxSize().padding(40.dp), uiAccentColor, colorBlindnessMode)
         Box(modifier = Modifier.fillMaxSize().padding(40.dp), contentAlignment = Alignment.Center) { androidx.compose.animation.Crossfade(targetState = moonResource, animationSpec = tween(400), label = "MoonTransition") { targetResource -> Image(painter = painterResource(id = targetResource), contentDescription = "Moon", modifier = Modifier.fillMaxSize(0.65f), contentScale = ContentScale.Fit) } }
         Row(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).offset(y = (-11).dp), verticalAlignment = Alignment.CenterVertically) {
             Box {
-                IconButton(onClick = { showBlindnessMenu = true }) { Icon(imageVector = Icons.Default.Visibility, contentDescription = "Sim", tint = if (blindnessType != "None") uiAccentColor else (if (isDarkMode) Color.Gray else Color.DarkGray)) }
-                DropdownMenu(expanded = showBlindnessMenu, onDismissRequest = { showBlindnessMenu = false }, containerColor = if (isDarkMode) Color(0xFF262626) else Color.White) { listOf("None", "Protanopia", "Deuteranopia", "Tritanopia").forEach { filter -> DropdownMenuItem(text = { Text(filter, color = if (blindnessType == filter) uiAccentColor else (if (isDarkMode) Color.White else Color.Black)) }, onClick = { onBlindnessChange(filter); showBlindnessMenu = false }) } }
+                IconButton(onClick = { showBlindnessMenu = true }) { 
+                    Icon(imageVector = Icons.Default.Visibility, contentDescription = "Sim", tint = if (colorBlindnessMode != "None") uiAccentColor else (if (isDarkMode) Color.Gray else Color.DarkGray)) 
+                }
+                DropdownMenu(expanded = showBlindnessMenu, onDismissRequest = { showBlindnessMenu = false }, containerColor = if (isDarkMode) Color(0xFF262626) else Color.White) { 
+                    listOf("None", "Protanopia", "Deuteranopia", "Tritanopia").forEach { mode -> 
+                        DropdownMenuItem(
+                            text = { Text(mode, color = if (colorBlindnessMode == mode) uiAccentColor else (if (isDarkMode) Color.White else Color.Black)) }, 
+                            onClick = { onColorBlindnessChange(mode); showBlindnessMenu = false }
+                        ) 
+                    } 
+                }
             }
             IconButton(onClick = onToggleDarkMode) { Icon(imageVector = if (isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode, contentDescription = "Theme", tint = if (isDarkMode) uiAccentColor else Color.DarkGray) }
         }
@@ -845,14 +1057,13 @@ private fun BrightnessSlider(currentLocale: String, value: Float, onValueChange:
                 .border(1.dp, if (value > 0.5f) Color.White.copy(0.3f) else Color.White.copy(0.15f), RoundedCornerShape(16.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Box(modifier = Modifier.fillMaxSize().padding(2.dp).border(1.2.dp, Color.Black.copy(0.4f), RoundedCornerShape(16.dp)).border(1.dp, Color.White.copy(0.1f), RoundedCornerShape(16.dp)))
             Slider(value = value, onValueChange = onValueChange, colors = SliderDefaults.colors(thumbColor = currentColor, activeTrackColor = currentColor, inactiveTrackColor = Color.Gray.copy(0.3f)), modifier = Modifier.padding(horizontal = 8.dp))
         }
     }
 }
 
 @Composable
-private fun InfoCard(isDarkMode: Boolean, currentColor: Color, harmonyColors: List<Color>, onCopyColor: (Color) -> Unit, activity: MainActivity?, harmonyMode: HarmonyMode, offset: Offset, onOffsetChange: (Offset) -> Unit, uiAccentColor: Color) {
+private fun InfoCard(isDarkMode: Boolean, currentColor: Color, harmonyColors: List<Color>, onCopyColor: (Color) -> Unit, activity: MainActivity?, harmonyMode: HarmonyMode, offset: Offset, onOffsetChange: (Offset) -> Unit, uiAccentColor: Color, colorBlindnessMode: String) {
     Card(colors = CardDefaults.cardColors(containerColor = if (isDarkMode) Color(0xFF262626).copy(alpha = 0.95f) else Color(0xFFDDDDDD).copy(alpha = 0.95f)), shape = RoundedCornerShape(18.dp), border = BorderStroke(1.dp, if (isDarkMode) Color(0xFF333333) else Color(0xFFAAAAAA)), modifier = Modifier.fillMaxWidth().offset { IntOffset(offset.x.roundToInt(), offset.y.roundToInt() - 5.dp.toPx().toInt()) }.pointerInput(Unit) { detectDragGestures { change, dragAmount -> change.consume(); onOffsetChange(dragAmount) } }) {
         Box(modifier = Modifier.padding(12.dp)) {
             IconButton(onClick = { activity?.let { act -> act.checkOverlayPermission(act) { FloatingService.currentHex = ColorUtils.colorToHex(currentColor); FloatingService.currentHarmony = harmonyColors.map { ColorUtils.colorToHex(it) }; FloatingService.isDarkMode = isDarkMode; FloatingService.originalIndex = if (harmonyMode == HarmonyMode.ANALOGOUS) harmonyColors.size / 2 else 0; act.startService(Intent(act, FloatingService::class.java)) } } }, modifier = Modifier.align(Alignment.TopEnd).size(32.dp)) { Icon(Icons.Default.PictureInPictureAlt, "Floating", tint = uiAccentColor) }
@@ -860,7 +1071,18 @@ private fun InfoCard(isDarkMode: Boolean, currentColor: Color, harmonyColors: Li
                 Text(ColorUtils.colorToHex(currentColor).uppercase(), color = if (isDarkMode) Color.White else Color.Black, fontSize = 20.sp, fontWeight = FontWeight.Black, modifier = Modifier.padding(4.dp).border(1.dp, if (isDarkMode) Color(0xFF444444) else Color(0xFFAAAAAA), RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 1.dp))
                 val cW = ColorUtils.getContrastRatio(currentColor, Color.White); val cB = ColorUtils.getContrastRatio(currentColor, Color.Black); val r = max(cW, cB)
                 Row(modifier = Modifier.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) { Surface(color = if (r >= 4.5) Color(0xFF4CAF50) else Color(0xFFF44336), shape = RoundedCornerShape(4.dp)) { Text(if (r >= 4.5) " WCAG PASS " else " WCAG FAIL ", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold) }; Text("Ratio: ${String.format(Locale.US, "%.1f", r)}:1 (${if (cW > cB) "White" else "Black"})", color = Color.Gray, fontSize = 10.sp) }
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, contentPadding = PaddingValues(horizontal = 4.dp)) { items(harmonyColors.size) { index -> val color = harmonyColors[index]; Column(horizontalAlignment = Alignment.CenterHorizontally) { Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(color).border(1.dp, if (isDarkMode) Color(0xFF444444) else Color(0xFFAAAAAA), RoundedCornerShape(8.dp)).clickable { onCopyColor(color) }, contentAlignment = Alignment.Center) { Text(text = (index + 1).toString(), color = if (ColorUtils.isDark(color)) Color.White else Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp) }; Text(ColorUtils.colorToHex(color).substring(1), color = Color.Gray, fontSize = 9.sp) } } }
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, contentPadding = PaddingValues(horizontal = 4.dp)) { 
+                    items(harmonyColors.size) { index -> 
+                        val color = harmonyColors[index]
+                        val displayColor = if (colorBlindnessMode == "None") color else ColorUtils.simulateColorBlindness(color, colorBlindnessMode)
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) { 
+                            Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(displayColor).border(1.dp, if (isDarkMode) Color(0xFF444444) else Color(0xFFAAAAAA), RoundedCornerShape(8.dp)).clickable { onCopyColor(color) }, contentAlignment = Alignment.Center) { 
+                                Text(text = (index + 1).toString(), color = if (ColorUtils.isDark(displayColor)) Color.White else Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp) 
+                            }
+                            Text(ColorUtils.colorToHex(color).substring(1), color = Color.Gray, fontSize = 9.sp) 
+                        } 
+                    } 
+                }
             }
         }
     }
@@ -869,7 +1091,7 @@ private fun InfoCard(isDarkMode: Boolean, currentColor: Color, harmonyColors: Li
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun FavoritesScreen(isDarkMode: Boolean, favorites: Set<String>, savedPalettes: Set<String>, onColorSelect: (String) -> Unit, onDeleteFavorite: (String) -> Unit, onDeletePalette: (String) -> Unit) {
-    val bgColor = if (isDarkMode) Color(0xFF141414) else Color(0xFFF2F4F7)
+    val bgColor = if (isDarkMode) Color(0xFF121212) else Color(0xFFF2F4F7)
     val cardColor = if (isDarkMode) Color(0xFF1E1E1E) else Color.White
     val borderColor = if (isDarkMode) Color.White.copy(0.12f) else Color.Black.copy(0.08f)
     
@@ -969,7 +1191,13 @@ fun CameraSniper(onColorCaptured: (Color) -> Unit, onColorConfirmed: (Color) -> 
     val context = LocalContext.current; val lifecycleOwner = LocalLifecycleOwner.current; val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
     var cameraControl by remember { mutableStateOf<CameraControl?>(null) }; var zoomRatio by remember { mutableFloatStateOf(1f) }; var lastColor by remember { mutableStateOf(Color.White) }
     Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) { detectTransformGestures { _, _, zoom, _ -> val nZ = (zoomRatio * zoom).coerceIn(1f, 10f); zoomRatio = nZ; cameraControl?.setZoomRatio(nZ) } }.pointerInput(Unit) { detectTapGestures { onColorConfirmed(lastColor) } }) {
-        AndroidView(factory = { ctx -> val pV = PreviewView(ctx); val executor = ContextCompat.getMainExecutor(ctx); cameraProviderFuture.addListener({ val cP = cameraProviderFuture.get(); val p = Preview.Builder().build().also { it.surfaceProvider = pV.surfaceProvider }; val iA = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build(); iA.setAnalyzer(executor) { iP -> val yB = iP.planes[0].buffer; val uB = iP.planes[1].buffer; val vB = iP.planes[2].buffer; val w = iP.width; val h = iP.height; var sY = 0L; var sU = 0L; var sV = 0L; val s = 12; val sX = w / 2 - s / 2; val sYp = h / 2 - s / 2; for (x in 0 until s) for (y in 0 until s) { val px = sX + x; val py = sYp + y; sY += yB.get(py * w + px).toInt() and 0xFF; val uvI = (py / 2) * (iP.planes[1].rowStride) + (px / 2) * (iP.planes[1].pixelStride); if (uvI < uB.remaining()) sU += uB.get(uvI).toInt() and 0xFF; if (uvI < vB.remaining()) sV += vB.get(uvI).toInt() and 0xFF }; val aY = (sY / (s * s)).toInt(); val aU = (sU / (s * s)).toInt(); val aV = (sV / (s * s)).toInt(); val r = (aY + 1.370705 * (aV - 128)).toInt().coerceIn(0, 255); val g = (aY - 0.337633 * (aU - 128) - 0.698001 * (aV - 128)).toInt().coerceIn(0, 255); val b = (aY + 1.732446 * (aU - 128)).toInt().coerceIn(0, 255); val nC = Color(r / 255f, g / 255f, b / 255f); val lC = Color(lastColor.red * 0.9f + nC.red * 0.1f, lastColor.green * 0.9f + nC.green * 0.1f, lastColor.blue * 0.9f + nC.blue * 0.1f); lastColor = lC; onColorCaptured(lC); iP.close() }; try { cP.unbindAll(); val c = cP.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, p, iA); cameraControl = c.cameraControl } catch (e: Exception) { e.printStackTrace() } }, executor); pV }, modifier = Modifier.fillMaxSize())
+        AndroidView(factory = { ctx -> val pV = PreviewView(ctx); val executor = ContextCompat.getMainExecutor(ctx); cameraProviderFuture.addListener({ val cP = cameraProviderFuture.get(); val p = Preview.Builder().build().also { it.surfaceProvider = pV.surfaceProvider }; val iA = ImageAnalysis.Builder().setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST).build(); iA.setAnalyzer(executor) { iP -> val yB = iP.planes[0].buffer; val uB = iP.planes[1].buffer; val vB = iP.planes[2].buffer; val w = iP.width; val h = iP.height; var sY = 0L; var sU = 0L; var sV = 0L; val s = 12; val sX = w / 2 - s / 2; val sYp = h / 2 - s / 2; for (x in 0 until s) for (y in 0 until s) { val px = sX + x; val py = sYp + y; sY += yB.get(py * w + px).toInt() and 0xFF; val uvI = (py / 2) * (iP.planes[1].rowStride) + (px / 2) * (iP.planes[1].pixelStride); if (uvI < uB.remaining()) sU += uB.get(uvI).toInt() and 0xFF; if (uvI < vB.remaining()) sV += vB.get(uvI).toInt() and 0xFF }; 
+                val aY = (sY / (s * s)).toInt(); val aU = (sU / (s * s)).toInt(); val aV = (sV / (s * s)).toInt(); 
+                val r = (aY + 1.402 * (aV - 128)).toInt().coerceIn(0, 255); 
+                val g = (aY - 0.34414 * (aU - 128) - 0.71414 * (aV - 128)).toInt().coerceIn(0, 255); 
+                val b = (aY + 1.772 * (aU - 128)).toInt().coerceIn(0, 255); 
+                val nC = Color(r / 255f, g / 255f, b / 255f); 
+                val lC = Color(lastColor.red * 0.9f + nC.red * 0.1f, lastColor.green * 0.9f + nC.green * 0.1f, lastColor.blue * 0.9f + nC.blue * 0.1f); lastColor = lC; onColorCaptured(lC); iP.close() }; try { cP.unbindAll(); val c = cP.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, p, iA); cameraControl = c.cameraControl } catch (e: Exception) { e.printStackTrace() } }, executor); pV }, modifier = Modifier.fillMaxSize())
         Canvas(modifier = Modifier.fillMaxSize()) { val center = Offset(size.width / 2f, size.height / 2f); drawCircle(Color.White, radius = 12.dp.toPx(), center = center, style = Stroke(2.dp.toPx())); drawLine(Color.White, Offset(center.x - 24.dp.toPx(), center.y), Offset(center.x + 24.dp.toPx(), center.y), strokeWidth = 2.dp.toPx()); drawLine(Color.White, Offset(center.x, center.y - 24.dp.toPx()), Offset(center.x, center.y + 24.dp.toPx()), strokeWidth = 2.dp.toPx()) }
     }
 }
@@ -981,56 +1209,174 @@ fun ExportDialog(harmonyColors: List<Color>, onDismiss: () -> Unit, currentColor
 }
 
 @Composable
-fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLocale: String, onToggleLanguage: () -> Unit, isCaosMode: Boolean, analogousCount: Int, fixedUiColorHex: String, favorites: Set<String>, onDismiss: () -> Unit, onUpdateSettings: (Boolean, Int, String) -> Unit) {
+fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLocale: String, onToggleLanguage: () -> Unit, isCaosMode: Boolean, analogousCount: Int, fixedUiColorHex: String, colorBlindnessMode: String, favorites: Set<String>, onDismiss: () -> Unit, onUpdateSettings: (Boolean, Int, String, String) -> Unit) {
+    var showBlindnessDropdown by remember { mutableStateOf(false) }
+    val dialogBg = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFE0E6ED)
+    val textColor = if (isDarkMode) Color.White else Color.Black
+    val sectionTitleColor = if (isDarkMode) Color.Gray else Color.DarkGray
+    
     AlertDialog(
         onDismissRequest = onDismiss, 
-        title = { Text("Ajustes de Interfaz") }, 
-        containerColor = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFB2B9C1), 
+        title = { 
+            Text(
+                "AJUSTES", 
+                style = TextStyle(fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 2.sp, color = textColor)
+            ) 
+        }, 
+        containerColor = dialogBg,
+        shape = RoundedCornerShape(24.dp),
+        tonalElevation = 8.dp,
         text = { 
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { 
-                // Tema y Lenguaje
-                Row(verticalAlignment = Alignment.CenterVertically) { 
-                    Text(stringResource(R.string.dark_mode), modifier = Modifier.weight(1f))
-                    Switch(checked = isDarkMode, onCheckedChange = { onToggleDarkMode() }) 
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) { 
-                    Text(stringResource(R.string.language), modifier = Modifier.weight(1f))
-                    TextButton(onClick = onToggleLanguage) { 
-                        Text(if (currentLocale == "es") "Español 🇪🇸" else "English 🇺🇸", fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.White else Color.Black) 
+            Column(
+                modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            ) { 
+                // --- APARIENCIA ---
+                Column {
+                    Text("APARIENCIA", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(if(isDarkMode) Color.Black.copy(0.2f) else Color.White.copy(0.4f)).padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) { 
+                        Icon(if(isDarkMode) Icons.Default.DarkMode else Icons.Default.LightMode, null, tint = sectionTitleColor, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(stringResource(R.string.dark_mode), modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
+                        Switch(checked = isDarkMode, onCheckedChange = { onToggleDarkMode() }) 
                     }
                 }
-                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
-                Row(verticalAlignment = Alignment.CenterVertically) { 
-                    Text("Modo Caos (Sincronizar)", modifier = Modifier.weight(1f))
-                    Switch(checked = isCaosMode, onCheckedChange = { onUpdateSettings(it, analogousCount, fixedUiColorHex) }) 
-                }
-                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
-                Column { 
-                    Text("Número de análogos: $analogousCount")
-                    Slider(value = analogousCount.toFloat(), onValueChange = { onUpdateSettings(isCaosMode, it.toInt(), fixedUiColorHex) }, valueRange = 5f..10f, steps = 4) 
-                }
-                HorizontalDivider(color = Color.Gray.copy(alpha = 0.2f))
-                Column { 
-                    Text("Color fijo de interfaz:")
+
+                // --- ACCESIBILIDAD ---
+                Column {
+                    Text("ACCESIBILIDAD", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
                     Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { 
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Surface(
+                            onClick = { showBlindnessDropdown = true },
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = if(isDarkMode) Color.Black.copy(0.2f) else Color.White.copy(0.4f),
+                            border = BorderStroke(1.dp, if(isDarkMode) Color.White.copy(0.1f) else Color.Black.copy(0.1f))
+                        ) {
+                            Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Visibility, null, tint = sectionTitleColor, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(colorBlindnessMode, modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
+                                Icon(Icons.Default.ArrowDropDown, null, tint = sectionTitleColor)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = showBlindnessDropdown,
+                            onDismissRequest = { showBlindnessDropdown = false },
+                            modifier = Modifier.fillMaxWidth(0.6f).background(if (isDarkMode) Color(0xFF262626) else Color.White)
+                        ) {
+                            listOf("None", "Protanopia", "Deuteranopia", "Tritanopia").forEach { mode ->
+                                DropdownMenuItem(
+                                    text = { Text(mode, color = if(isDarkMode) Color.White else Color.Black) },
+                                    onClick = { 
+                                        onUpdateSettings(isCaosMode, analogousCount, fixedUiColorHex, mode)
+                                        showBlindnessDropdown = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // --- IDIOMA ---
+                Column {
+                    Text("SISTEMA", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Spacer(Modifier.height(8.dp))
+                    Surface(
+                        onClick = onToggleLanguage,
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        color = if(isDarkMode) Color.Black.copy(0.2f) else Color.White.copy(0.4f)
+                    ) {
+                        Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Language, null, tint = sectionTitleColor, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(12.dp))
+                            Text(stringResource(R.string.language), modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
+                            Text(if (currentLocale == "es") "Español 🇪🇸" else "English 🇺🇸", fontWeight = FontWeight.Bold, color = textColor, fontSize = 13.sp)
+                        }
+                    }
+                }
+
+                // --- SINCRONIZACIÓN ---
+                Column {
+                    Text("PERSONALIZACIÓN", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(if(isDarkMode) Color.Black.copy(0.2f) else Color.White.copy(0.4f)).padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) { 
+                        Icon(Icons.Default.Sync, null, tint = sectionTitleColor, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text("Modo Caos (Sincronizar)", modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
+                        Switch(checked = isCaosMode, onCheckedChange = { onUpdateSettings(it, analogousCount, fixedUiColorHex, colorBlindnessMode) }) 
+                    }
+                    
+                    Spacer(Modifier.height(16.dp))
+                    Text("Número de análogos: $analogousCount", style = TextStyle(fontWeight = FontWeight.Medium, color = textColor, fontSize = 13.sp))
+                    Slider(
+                        value = analogousCount.toFloat(), 
+                        onValueChange = { onUpdateSettings(isCaosMode, it.toInt(), fixedUiColorHex, colorBlindnessMode) }, 
+                        valueRange = 5f..10f, 
+                        steps = 4,
+                        colors = SliderDefaults.colors(
+                            thumbColor = if(isDarkMode) Color.White else Color.Black,
+                            activeTrackColor = if(isDarkMode) Color.White.copy(0.5f) else Color.Black.copy(0.5f)
+                        )
+                    ) 
+                }
+
+                // --- COLOR FIJO ---
+                Column { 
+                    Text("COLOR DE INTERFAZ FIJO", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Spacer(Modifier.height(12.dp))
+                    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { 
                         val colors = listOf("#268CEF", "#FFD700", "#FF5722", "#4CAF50") + favorites.toList()
                         items(colors) { hex -> 
                             val color = ColorUtils.hexToColor(hex) ?: Color.Gray
-                            Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(color).border(if (hex == fixedUiColorHex) 3.dp else 1.dp, if (isDarkMode) Color.White else Color.Black, CircleShape).clickable { onUpdateSettings(isCaosMode, analogousCount, hex) }) 
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(color)
+                                    .border(if (hex == fixedUiColorHex) 3.dp else 1.dp, textColor, CircleShape)
+                                    .clickable { onUpdateSettings(isCaosMode, analogousCount, hex, colorBlindnessMode) }
+                            ) 
                         } 
                     } 
                 } 
             } 
         }, 
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Aceptar") } }
+        confirmButton = { 
+            Surface(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(100),
+                color = if(isDarkMode) Color.White else Color.Black,
+                modifier = Modifier.padding(bottom = 12.dp, end = 12.dp)
+            ) {
+                Text(
+                    "ACEPTAR", 
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                    style = TextStyle(fontWeight = FontWeight.Black, color = if(isDarkMode) Color.Black else Color.White, fontSize = 12.sp)
+                )
+            }
+        }
     )
 }
 
 @Composable
-fun ColorWheel(isDarkMode: Boolean, currentColor: Color, actualHsv: FloatArray, harmonyMode: HarmonyMode, analogousCount: Int, onColorChange: (Color) -> Unit, onColorClick: (Color) -> Unit, modifier: Modifier = Modifier, uiAccentColor: Color) {
-    val hsv = remember(currentColor) { FloatArray(3).apply { android.graphics.Color.colorToHSV(currentColor.toArgb(), this) } }
+fun ColorWheel(isDarkMode: Boolean, currentColor: Color, actualHsv: FloatArray, harmonyMode: HarmonyMode, analogousCount: Int, onColorChange: (Color) -> Unit, onColorClick: (Color) -> Unit, modifier: Modifier = Modifier, uiAccentColor: Color, colorBlindnessMode: String) {
     val textMeasurer = rememberTextMeasurer()
+    
+    val wheelGradientColors = remember(colorBlindnessMode) {
+        listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red).map {
+            if (colorBlindnessMode == "None") it else ColorUtils.simulateColorBlindness(it, colorBlindnessMode)
+        }
+    }
     
     // Generar offsets según el número de análogos configurado
     val targets = remember(harmonyMode, analogousCount) {
@@ -1049,62 +1395,45 @@ fun ColorWheel(isDarkMode: Boolean, currentColor: Color, actualHsv: FloatArray, 
     val animatedOffsets = remember { mutableStateListOf<Animatable<Float, AnimationVector1D>>() }
     
     LaunchedEffect(targets) {
-        // Ajustar el tamaño de la lista de animatables si cambia el número de puntos
-        while (animatedOffsets.size < targets.size) {
-            animatedOffsets.add(Animatable(0f))
-        }
-        while (animatedOffsets.size > targets.size) {
-            animatedOffsets.removeAt(animatedOffsets.size - 1)
-        }
-        
-        targets.forEachIndexed { i, target ->
-            launch {
-                animatedOffsets[i].animateTo(
-                    targetValue = target,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)
-                )
-            }
-        }
+        while (animatedOffsets.size < targets.size) { animatedOffsets.add(Animatable(0f)) }
+        while (animatedOffsets.size > targets.size) { animatedOffsets.removeAt(animatedOffsets.size - 1) }
+        targets.forEachIndexed { i, target -> launch { animatedOffsets[i].animateTo(targetValue = target, animationSpec = spring(dampingRatio = Spring.DampingRatioLowBouncy, stiffness = Spring.StiffnessLow)) } }
     }
 
-    Canvas(modifier = modifier.pointerInput(actualHsv[2]) { detectDragGestures { change, _ -> val center = Offset(size.width / 2f, size.height / 2f); val pos = change.position - center; val hue = (atan2(pos.y, pos.x) * (180f / PI.toFloat()) + 360f) % 360f; val dist = sqrt(pos.x.pow(2) + pos.y.pow(2)); val radius = min(size.width, size.height) / 2f; val s = (dist / radius).coerceIn(0f, 1f); onColorChange(ColorUtils.hsvToColor(hue, s, actualHsv[2])) } }.pointerInput(harmonyMode, hsv[0], actualHsv[2]) { detectTapGestures { offset -> val center = Offset(size.width / 2f, size.height / 2f); val radius = min(size.width, size.height) / 2f; val pos = offset - center; val dist = sqrt(pos.x.pow(2) + pos.y.pow(2)); if (dist < radius * 0.58f) { val newVal = if (actualHsv[2] > 0.5f) 0.4f else 1.0f; onColorChange(ColorUtils.hsvToColor(hsv[0], hsv[1], newVal)) } else if (dist <= radius) { val hue = (atan2(pos.y, pos.x) * (180f / PI.toFloat()) + 360f) % 360f; val s = (dist / radius).coerceIn(0f, 1f); onColorChange(ColorUtils.hsvToColor(hue, s, actualHsv[2])) } else { val rad = hsv[0] * PI.toFloat() / 180f; val d = sqrt((offset.x - (center.x + radius * cos(rad))).pow(2) + (offset.y - (center.y + radius * sin(rad))).pow(2)); if (d < 40f) onColorClick(currentColor) } } }) {
+    Canvas(modifier = modifier.pointerInput(actualHsv[2]) { detectDragGestures { change, _ -> val center = Offset(size.width / 2f, size.height / 2f); val pos = change.position - center; val hue = (atan2(pos.y, pos.x) * (180f / PI.toFloat()) + 360f) % 360f; val dist = sqrt(pos.x.pow(2) + pos.y.pow(2)); val radius = min(size.width, size.height) / 2f; val s = (dist / radius).coerceIn(0f, 1f); onColorChange(ColorUtils.hsvToColor(hue, s, actualHsv[2])) } }.pointerInput(harmonyMode, actualHsv[0], actualHsv[1], actualHsv[2]) { detectTapGestures { offset -> val center = Offset(size.width / 2f, size.height / 2f); val radius = min(size.width, size.height) / 2f; val pos = offset - center; val dist = sqrt(pos.x.pow(2) + pos.y.pow(2)); if (dist < radius * 0.58f) { val newVal = if (actualHsv[2] > 0.5f) 0.4f else 1.0f; onColorChange(ColorUtils.hsvToColor(actualHsv[0], actualHsv[1], newVal)) } else if (dist <= radius) { val hue = (atan2(pos.y, pos.x) * (180f / PI.toFloat()) + 360f) % 360f; val s = (dist / radius).coerceIn(0f, 1f); onColorChange(ColorUtils.hsvToColor(hue, s, actualHsv[2])) } else { val rad = actualHsv[0] * PI.toFloat() / 180f; val d = sqrt((offset.x - (center.x + radius * cos(rad))).pow(2) + (offset.y - (center.y + radius * sin(rad))).pow(2)); if (d < 40f) onColorClick(currentColor) } } }) {
         val center = Offset(size.width / 2f, size.height / 2f); val radius = min(size.width, size.height) / 2f; val ringThickness = radius * 0.12f; val gap = radius * 0.02f
-        for (i in 0..2) { val r = radius - (i * (ringThickness + gap)) - (ringThickness / 2f); val ringSaturation = when(i) { 0 -> 1f; 1 -> 0.7f; else -> 0.4f }; drawCircle(brush = Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)), radius = r, center = center, style = Stroke(width = ringThickness)); drawCircle(color = Color.Black.copy(alpha = 1f - actualHsv[2]), radius = r, center = center, style = Stroke(width = ringThickness)); drawCircle(color = Color.Gray.copy(alpha = (1f - (hsv[1] * ringSaturation)) * 0.5f), radius = r, center = center, style = Stroke(width = ringThickness)) }
-        val gC = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.8f); val mRad = hsv[0] * PI.toFloat() / 180f; drawLine(gC.copy(alpha = 0.5f), center, Offset(center.x + radius * cos(mRad), center.y + radius * sin(mRad)), strokeWidth = 2.dp.toPx())
+        for (i in 0..2) { val r = radius - (i * (ringThickness + gap)) - (ringThickness / 2f); val ringSaturation = when(i) { 0 -> 1f; 1 -> 0.7f; else -> 0.4f }; drawCircle(brush = Brush.sweepGradient(wheelGradientColors), radius = r, center = center, style = Stroke(width = ringThickness)); drawCircle(color = Color.Black.copy(alpha = 1f - actualHsv[2]), radius = r, center = center, style = Stroke(width = ringThickness)); drawCircle(color = Color.Gray.copy(alpha = (1f - (actualHsv[1] * ringSaturation)) * 0.5f), radius = r, center = center, style = Stroke(width = ringThickness)) }
+        val gC = if (isDarkMode) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.8f); val mRad = actualHsv[0] * PI.toFloat() / 180f; drawLine(gC.copy(alpha = 0.5f), center, Offset(center.x + radius * cos(mRad), center.y + radius * sin(mRad)), strokeWidth = 2.dp.toPx())
         
         animatedOffsets.forEachIndexed { i, anim -> 
-            val h = (hsv[0] + anim.value + 360f) % 360f
+            val h = (actualHsv[0] + anim.value + 360f) % 360f
             val rad = h * PI.toFloat() / 180f
             val p = Offset(center.x + radius * cos(rad), center.y + radius * sin(rad))
-            
-            if (anim.value != 0f) { 
-                drawLine(gC.copy(alpha = 0.3f), center, p, strokeWidth = 1.dp.toPx())
-                drawCircle(if (isDarkMode) Color.White else Color.Black, radius = 6.dp.toPx(), center = p) 
-            }
-            
-            val lR = radius + 22.dp.toPx()
-            val lP = Offset(center.x + lR * cos(rad), center.y + lR * sin(rad))
-            drawCircle(uiAccentColor, radius = 10.dp.toPx(), center = lP)
-            val tr = textMeasurer.measure((i + 1).toString(), TextStyle(color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold))
+            if (anim.value != 0f) { drawLine(gC.copy(alpha = 0.3f), center, p, strokeWidth = 1.dp.toPx()); drawCircle(if (isDarkMode) Color.White else Color.Black, radius = 6.dp.toPx(), center = p) }
+            val lR = radius + 22.dp.toPx(); val lP = Offset(center.x + lR * cos(rad), center.y + lR * sin(rad))
+            val dotColor = if (colorBlindnessMode == "None") uiAccentColor else ColorUtils.simulateColorBlindness(uiAccentColor, colorBlindnessMode)
+            drawCircle(dotColor, radius = 10.dp.toPx(), center = lP)
+            val tr = textMeasurer.measure((i + 1).toString(), TextStyle(color = if (ColorUtils.isDark(dotColor)) Color.White else Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold))
             drawText(tr, topLeft = Offset(lP.x - tr.size.width / 2, lP.y - tr.size.height / 2)) 
         }
-        val hd = hsv[1] * radius; val hp = Offset(center.x + hd * cos(hsv[0] * PI.toFloat() / 180f), center.y + hd * sin(hsv[0] * PI.toFloat() / 180f)); drawCircle(Color.Black, radius = 10.dp.toPx(), center = hp); drawCircle(Color.White, radius = 8.dp.toPx(), center = hp); drawCircle(currentColor, radius = 6.dp.toPx(), center = hp)
+        val hd = actualHsv[1] * radius; val hp = Offset(center.x + hd * cos(actualHsv[0] * PI.toFloat() / 180f), center.y + hd * sin(actualHsv[0] * PI.toFloat() / 180f))
+        val thumbColor = if (colorBlindnessMode == "None") currentColor else ColorUtils.simulateColorBlindness(currentColor, colorBlindnessMode)
+        drawCircle(Color.Black, radius = 10.dp.toPx(), center = hp); drawCircle(Color.White, radius = 8.dp.toPx(), center = hp); drawCircle(thumbColor, radius = 6.dp.toPx(), center = hp)
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ColorCard(isDarkMode: Boolean, item: ColorItem, onClick: () -> Unit, onLongClick: () -> Unit) {
-    val isDark = ColorUtils.isDark(item.color); val textColor = if (isDark) Color.White else Color.Black
+fun ColorCard(isDarkMode: Boolean, item: ColorItem, colorBlindnessMode: String, onClick: () -> Unit, onLongClick: () -> Unit) {
+    val displayColor = if (colorBlindnessMode == "None") item.color else ColorUtils.simulateColorBlindness(item.color, colorBlindnessMode)
+    val isDark = ColorUtils.isDark(displayColor); val textColor = if (isDark) Color.White else Color.Black
     val shape = RoundedCornerShape(18.dp)
-    Box(modifier = Modifier.aspectRatio(1f).shadow(6.dp, shape).clip(shape).background(item.color).border(1.2.dp, if (isDarkMode) Color.White.copy(0.35f) else Color.Black.copy(0.3f), shape).combinedClickable(onClick = onClick, onLongClick = onLongClick)) { 
-        // Capa de marco para profundidad
-        Box(modifier = Modifier.fillMaxSize().padding(3.5.dp).border(1.5.dp, Color.Black.copy(0.3f), shape)) {
+    Box(modifier = Modifier.aspectRatio(1f).shadow(6.dp, shape).clip(shape).background(displayColor).border(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color.Black.copy(0.1f), shape).combinedClickable(onClick = onClick, onLongClick = onLongClick)) {
+        Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))) {
             Column(modifier = Modifier.padding(10.dp)) { 
-                Text(text = item.title, color = textColor, fontSize = 18.sp, fontWeight = FontWeight.Bold); 
+                Text(text = item.title, color = textColor, fontSize = 12.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1); 
                 Spacer(modifier = Modifier.height(4.dp)); 
-                Text(text = ColorUtils.colorToHex(item.color).uppercase(), color = textColor, fontSize = 16.sp, fontWeight = FontWeight.Medium); 
-                Text(text = "(${String.format(Locale.US, "%.2f", item.color.red)}, ${String.format(Locale.US, "%.2f", item.color.green)}, ${String.format(Locale.US, "%.2f", item.color.blue)}, 1)", color = textColor, fontSize = 11.sp) 
+                Text(text = ColorUtils.colorToHex(item.color).uppercase(), color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Medium); 
+                Text(text = "(${String.format(Locale.US, "%.2f", item.color.red)}, ${String.format(Locale.US, "%.2f", item.color.green)}, ${String.format(Locale.US, "%.2f", item.color.blue)}, 1)", color = textColor.copy(alpha = 0.8f), fontSize = 10.sp, fontWeight = FontWeight.Normal)
             }
         }
     }
