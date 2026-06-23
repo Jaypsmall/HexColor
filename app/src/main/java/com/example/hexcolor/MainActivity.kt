@@ -69,6 +69,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.paint
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -244,6 +245,47 @@ object ColorUtils {
 
 data class ColorItem(val title: String, val color: Color)
 
+@Composable
+fun GoldButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .size(width = 250.dp, height = 60.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                brush = Brush.linearGradient(
+                    colors = listOf(Color(0xFF8C6221), Color(0xFFFFF3A8), Color(0xFFC29B47)),
+                    start = Offset(0f, 0f),
+                    end = Offset.Infinite
+                )
+            )
+            .border(1.2.dp, Color(0xFFF3E5AB), RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text.uppercase(),
+            color = Color(0xFF111111),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+fun Modifier.goldButtonStyle() = this
+    .background(
+        brush = Brush.linearGradient(
+            colors = listOf(Color(0xFF8C6221), Color(0xFFFFF3A8), Color(0xFFC29B47)),
+            start = Offset(0f, 0f),
+            end = Offset.Infinite
+        ),
+        shape = RoundedCornerShape(8.dp)
+    )
+    .border(1.2.dp, Color(0xFFF3E5AB), RoundedCornerShape(8.dp))
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
@@ -256,23 +298,26 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     val palettesKey = remember { stringSetPreferencesKey("user_palettes") } // Almacena paletas como JSON: {"name": "X", "colors": ["#111", "#222"]}
     val colorBlindnessKey = remember { stringPreferencesKey("color_blindness_mode") }
     val caosModeKey = remember { booleanPreferencesKey("caos_mode") }
+    val goldModeKey = remember { booleanPreferencesKey("gold_mode") }
     val analogousCountKey = remember { intPreferencesKey("analogous_count") }
     val fixedUiColorKey = remember { stringPreferencesKey("fixed_ui_color") }
 
     val settingsFlow = remember { 
         context.dataStore.data.map { prefs ->
             val caos = prefs[caosModeKey] ?: true
+            val gold = prefs[goldModeKey] ?: false
             val count = prefs[analogousCountKey] ?: 7
             val hex = prefs[fixedUiColorKey] ?: "#268CEF"
             val blind = prefs[colorBlindnessKey] ?: "None"
-            listOf(caos, count, hex, blind)
+            listOf(caos, count, hex, blind, gold)
         } 
     }
-    val settings by settingsFlow.collectAsState(initial = listOf(true, 7, "#268CEF", "None"))
+    val settings by settingsFlow.collectAsState(initial = listOf(true, 7, "#268CEF", "None", false))
     val isCaosMode = settings[0] as Boolean
     val analogousCount = settings[1] as Int
     val fixedUiColorHex = settings[2] as String
     val colorBlindnessMode = settings[3] as String
+    val isGoldMode = settings[4] as Boolean
     val fixedUiColor = ColorUtils.hexToColor(fixedUiColorHex) ?: Color(0xFF268CEF)
     
     var hexInput by remember { mutableStateOf("#21DD10") }
@@ -405,17 +450,16 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                         modifier = Modifier.fillMaxWidth().padding(12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Image(painter = painterResource(id = R.drawable.icono_hex3), contentDescription = "Logo", modifier = Modifier.size(75.dp))
-                        Text(
-                            text = "HEX COLOR", 
-                            style = TextStyle(
-                                color = uiAccentColor,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 2.sp,
-                                shadow = Shadow(color = Color.Black.copy(alpha = 0.5f), offset = Offset(3f, 3f), blurRadius = 6f)
-                            )
+                        Image(
+                            painter = painterResource(id = if (isGoldMode) R.drawable.logo_oro else R.drawable.logo_nuevo1),
+                            contentDescription = "Logo",
+                            modifier = Modifier.size(75.dp)
+                        )
+                        Image(
+                            painter = painterResource(id = if (isGoldMode) R.drawable.hexcolor_oro else R.drawable.hexcolor),
+                            contentDescription = "HexColor Text",
+                            modifier = Modifier.height(32.dp).padding(top = 8.dp),
+                            contentScale = ContentScale.FillHeight
                         )
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
@@ -423,8 +467,51 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                     val itemModifier = Modifier.height(48.dp).padding(horizontal = 8.dp)
                     val labelStyle = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Bold)
 
-                    NavigationDrawerItem(label = { Text("Premium", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = Color(0xFFFFD700), modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
-                    NavigationDrawerItem(label = { Text("Modo Sniper", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close(); Toast.makeText(context, "¡Hazme Premium Bro! 🎯", Toast.LENGTH_LONG).show() } }, icon = { Icon(Icons.Default.CenterFocusStrong, contentDescription = null, tint = uiAccentColor, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    // --- BOTÓN PREMIUM ORO ---
+                    Surface(
+                        onClick = { scope.launch { drawerState.close() } },
+                        modifier = itemModifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.Transparent
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .goldButtonStyle(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
+                                Icon(Icons.Default.WorkspacePremium, contentDescription = null, tint = Color(0xFF543B14), modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(stringResource(R.string.premium), style = labelStyle, color = Color(0xFF543B14))
+                            }
+                        }
+                    }
+                    
+                    Spacer(Modifier.height(4.dp))
+
+                    // --- MODO SNIPER ORO ---
+                    Surface(
+                        onClick = { scope.launch { drawerState.close(); Toast.makeText(context, "¡Hazme Premium Bro! 🎯", Toast.LENGTH_LONG).show() } },
+                        modifier = itemModifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color.Transparent
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .goldButtonStyle(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 16.dp)) {
+                                Icon(Icons.Default.CenterFocusStrong, contentDescription = null, tint = Color(0xFF543B14), modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(12.dp))
+                                Text(stringResource(R.string.sniper_mode), style = labelStyle, color = Color(0xFF543B14))
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
                     NavigationDrawerItem(label = { Text(stringResource(R.string.palette), style = labelStyle) }, selected = pagerState.currentPage == 0, onClick = { scope.launch { pagerState.animateScrollToPage(0); drawerState.close() } }, icon = { Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 0) Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100)) else Modifier))
                     NavigationDrawerItem(label = { Text(stringResource(R.string.wheel), style = labelStyle) }, selected = pagerState.currentPage == 1, onClick = { scope.launch { pagerState.animateScrollToPage(1); drawerState.close() } }, icon = { Icon(Icons.Default.ColorLens, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 1) Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100)) else Modifier))
                     NavigationDrawerItem(label = { Text(stringResource(R.string.picker), style = labelStyle) }, selected = pagerState.currentPage == 2, onClick = { scope.launch { pagerState.animateScrollToPage(2); drawerState.close() } }, icon = { Icon(Icons.Default.Colorize, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 2) Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100)) else Modifier))
@@ -432,9 +519,9 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                     NavigationDrawerItem(label = { Text(stringResource(R.string.import_palette), style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close(); importLauncher.launch("text/css") } }, icon = { Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
                     
                     HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
-                    NavigationDrawerItem(label = { Text("Ajustes", style = labelStyle) }, selected = false, onClick = { scope.launch { showSettingsDialog = true; drawerState.close() } }, icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
-                    NavigationDrawerItem(label = { Text("Valóranos", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.ThumbUp, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
-                    NavigationDrawerItem(label = { Text("Ayuda", style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.settings), style = labelStyle) }, selected = false, onClick = { scope.launch { showSettingsDialog = true; drawerState.close() } }, icon = { Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.rate_us), style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.ThumbUp, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
+                    NavigationDrawerItem(label = { Text(stringResource(R.string.help), style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close() } }, icon = { Icon(Icons.Default.Help, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
                     Spacer(Modifier.height(24.dp))
                 }
             }
@@ -455,25 +542,16 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                         }
                         Spacer(Modifier.width(8.dp))
                         Image(
-                            painter = painterResource(id = R.drawable.icono_hex3),
+                            painter = painterResource(id = if (isGoldMode) R.drawable.logo_oro else R.drawable.logo_nuevo1),
                             contentDescription = "Logo",
                             modifier = Modifier.size(32.dp)
                         )
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = "HEX COLOR",
-                            style = TextStyle(
-                                color = uiAccentColor,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 3.sp,
-                                shadow = Shadow(
-                                    color = Color.Black.copy(alpha = if (isDarkMode) 0.6f else 0.3f),
-                                    offset = Offset(3f, 3f),
-                                    blurRadius = 6f
-                                )
-                            )
+                        Spacer(Modifier.width(8.dp))
+                        Image(
+                            painter = painterResource(id = if (isGoldMode) R.drawable.hexcolor_oro else R.drawable.hexcolor),
+                            contentDescription = "HexColor Text",
+                            modifier = Modifier.height(28.dp),
+                            contentScale = ContentScale.FillHeight
                         )
                     }
 
@@ -513,17 +591,23 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                                 onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
                                 modifier = Modifier.weight(1f).height(38.dp).shadow(if(isSelected) 6.dp else 2.dp, shape),
                                 shape = shape,
-                                color = if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFD1D5D8)),
+                                color = if (isSelected) {
+                                    if (isGoldMode) Color.Transparent else uiAccentColor
+                                } else {
+                                    if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFD1D5D8)
+                                },
                                 border = BorderStroke(1.dp, if (isSelected) Color.White.copy(0.5f) else (if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.1f)))
                             ) {
                                 Box(modifier = Modifier
                                     .fillMaxSize()
-                                    .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                                    .then(if (isSelected && isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
                                         text = stringResource(resId).uppercase(),
-                                        color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray,
+                                        color = if (isSelected) {
+                                            if (isGoldMode) Color(0xFF543B14) else (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)
+                                        } else Color.Gray,
                                         fontWeight = FontWeight.ExtraBold,
                                         fontSize = 8.sp,
                                         letterSpacing = 0.5.sp,
@@ -593,7 +677,8 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                             isSniperMode, 
                             { isSniperMode = !isSniperMode }, 
                             uiAccentColor, 
-                            colorBlindnessMode
+                            colorBlindnessMode,
+                            isGoldMode
                         )
                         1 -> WheelScreen(
                             isDarkMode, 
@@ -623,7 +708,8 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                             currentLocale, 
                             uiAccentColor, 
                             colorBlindnessMode, 
-                            { blind -> scope.launch { context.dataStore.edit { it[colorBlindnessKey] = blind } } }
+                            { blind -> scope.launch { context.dataStore.edit { it[colorBlindnessKey] = blind } } },
+                            isGoldMode
                         )
                         2 -> PickerScreen(
                             isDarkMode = isDarkMode,
@@ -658,7 +744,8 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                                 val rgb = "(${String.format(Locale.US, "%.2f", displayColor.red)}, ${String.format(Locale.US, "%.2f", displayColor.green)}, ${String.format(Locale.US, "%.2f", displayColor.blue)}, 1)"
                                 clipboardManager.setText(AnnotatedString("$hex $rgb"))
                                 Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
-                            }
+                            },
+                            isGoldMode = isGoldMode
                         )
                         3 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorUtils.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } })
                     }
@@ -667,7 +754,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         }
     }
     if (showSettingsDialog) {
-        SettingsDialog(isDarkMode, onToggleDarkMode, currentLocale, { toggleLanguage() }, isCaosMode, analogousCount, fixedUiColorHex, colorBlindnessMode, favorites, { showSettingsDialog = false }, { caos, count, hex, blind -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex; prefs[colorBlindnessKey] = blind } } })
+        SettingsDialog(isDarkMode, onToggleDarkMode, currentLocale, { toggleLanguage() }, isCaosMode, analogousCount, fixedUiColorHex, colorBlindnessMode, favorites, { showSettingsDialog = false }, { caos, count, hex, blind, gold -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex; prefs[colorBlindnessKey] = blind; prefs[goldModeKey] = gold } } }, isGoldMode)
     }
 }
 
@@ -682,7 +769,8 @@ fun PickerScreen(
     uiAccentColor: Color, 
     colorBlindnessMode: String,
     onSaveFavorite: (Color) -> Unit,
-    onCopyColor: (Color) -> Unit
+    onCopyColor: (Color) -> Unit,
+    isGoldMode: Boolean
 ) {
     val context = LocalContext.current
     var showExportDialog by remember { mutableStateOf(false) }
@@ -730,15 +818,15 @@ fun PickerScreen(
                         onClick = { launcher.launch("image/*") },
                         modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape),
                         shape = buttonShape,
-                        color = uiAccentColor,
+                        color = if (isGoldMode) Color.Transparent else uiAccentColor,
                         border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.2f) else Color.Black.copy(0.1f))
                     ) {
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                            .then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.select_image), fontWeight = FontWeight.Bold, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)
+                            Text(stringResource(R.string.select_image), fontWeight = FontWeight.Bold, color = if (isGoldMode) Color(0xFF543B14) else (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black))
                         }
                     }
                     
@@ -751,15 +839,14 @@ fun PickerScreen(
                             },
                             modifier = Modifier.weight(1f).height(50.dp).shadow(4.dp, buttonShape),
                             shape = buttonShape,
-                            color = if (isDarkMode) Color(0xFF333333) else Color(0xFFDDDDDD),
-                            border = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.05f))
+                            color = Color.Transparent
                         ) {
                             Box(modifier = Modifier
                                 .fillMaxSize()
-                                .background(Brush.verticalGradient(listOf(Color.White.copy(0.15f), Color.Transparent))),
+                                .goldButtonStyle(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(stringResource(R.string.detect_colors), fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.White else Color.Black)
+                                Text(stringResource(R.string.detect_colors), fontWeight = FontWeight.ExtraBold, color = Color(0xFF543B14))
                             }
                         }
                     }
@@ -803,7 +890,7 @@ fun PickerScreen(
 }
 
 @Composable
-fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -> Unit, currentColor: Color, onColorChange: (Color) -> Unit, hsvValue: FloatArray, onHsvChange: (FloatArray) -> Unit, colorItems: List<ColorItem>, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, isSniperMode: Boolean, onSniperToggle: () -> Unit, uiAccentColor: Color, colorBlindnessMode: String) {
+fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -> Unit, currentColor: Color, onColorChange: (Color) -> Unit, hsvValue: FloatArray, onHsvChange: (FloatArray) -> Unit, colorItems: List<ColorItem>, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, isSniperMode: Boolean, onSniperToggle: () -> Unit, uiAccentColor: Color, colorBlindnessMode: String, isGoldMode: Boolean) {
     val context = LocalContext.current
     val buttonShape = RoundedCornerShape(12.dp)
     // Borde exterior más trabajado (un pelín más grueso y definido)
@@ -845,15 +932,15 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                         onClick = { val color = ColorUtils.hexToColor(hexInput); if (color != null) onColorChange(color) else Toast.makeText(context, context.getString(R.string.invalid_hex), Toast.LENGTH_SHORT).show() }, 
                         modifier = Modifier.width(85.dp).fillMaxHeight().shadow(4.dp, buttonShape), 
                         shape = buttonShape, 
-                        color = uiAccentColor,
+                        color = if (isGoldMode) Color.Transparent else uiAccentColor,
                         border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                            .then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.show), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
+                            Text(stringResource(R.string.show), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (isGoldMode) Color(0xFF543B14) else (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)) 
                         }
                     }
                     
@@ -861,18 +948,19 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                         onClick = { if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED) onSniperToggle() else permissionLauncher.launch(android.Manifest.permission.CAMERA) }, 
                         modifier = Modifier.size(50.dp).shadow(4.dp, buttonShape),
                         shape = buttonShape,
-                        color = uiAccentColor,
+                        color = if (isGoldMode) Color.Transparent else uiAccentColor,
                         border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                            .then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.CameraAlt, "Sniper", tint = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
+                            Icon(Icons.Default.CameraAlt, "Sniper", tint = if (isGoldMode) Color(0xFF543B14) else (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black))
                         }
                     }
                 }
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -911,30 +999,30 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
                         onClick = { onColorChange(Color((0..255).random() / 255f, (0..255).random() / 255f, (0..255).random() / 255f)) }, 
                         modifier = Modifier.weight(1f).fillMaxHeight().shadow(4.dp, buttonShape), 
                         shape = buttonShape, 
-                        color = uiAccentColor,
+                        color = if (isGoldMode) Color.Transparent else uiAccentColor,
                         border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                            .then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.random), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) 
+                            Text(stringResource(R.string.random), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (isGoldMode) Color(0xFF543B14) else (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)) 
                         }
                     }
                     Surface(
                         onClick = { onColorChange(ColorUtils.getComplementary(currentColor)) }, 
                         modifier = Modifier.weight(1f).fillMaxHeight().shadow(4.dp, buttonShape), 
                         shape = buttonShape, 
-                        color = uiAccentColor,
+                        color = if (isGoldMode) Color.Transparent else uiAccentColor,
                         border = BorderStroke(1.dp, Color.White.copy(0.4f))
                     ) { 
                         Box(modifier = Modifier
                             .fillMaxSize()
-                            .background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent))),
+                            .then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(stringResource(R.string.complementary), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)
+                            Text(stringResource(R.string.complementary), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (isGoldMode) Color(0xFF543B14) else (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black))
                         }
                     }
                 }
@@ -947,7 +1035,7 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
 @SuppressLint("ContextCastToActivity")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor: Color, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, harmonyColors: List<Color>, hsvValue: FloatArray, analogousCount: Int, onValueChange: (Float) -> Unit, onNavigateToFavorites: () -> Unit, currentLocale: String, uiAccentColor: Color, colorBlindnessMode: String, onColorBlindnessChange: (String) -> Unit) {
+fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor: Color, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, harmonyColors: List<Color>, hsvValue: FloatArray, analogousCount: Int, onValueChange: (Float) -> Unit, onNavigateToFavorites: () -> Unit, currentLocale: String, uiAccentColor: Color, colorBlindnessMode: String, onColorBlindnessChange: (String) -> Unit, isGoldMode: Boolean) {
     val activity = LocalContext.current as? MainActivity
     val modes = listOf(HarmonyMode.COMPLEMENTARY, HarmonyMode.TRIADIC, HarmonyMode.ANALOGOUS)
     var cardOffset by remember { mutableStateOf(Offset(0f, 0f)) }; var showExportDialog by remember { mutableStateOf(false) }
@@ -956,11 +1044,11 @@ fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor:
         if (isWide) {
             Row(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 Box(modifier = Modifier.weight(1.2f).fillMaxHeight(), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor) }
-                Column(modifier = Modifier.weight(1f).verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)) { HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2]); BrightnessSlider(currentLocale, hsvValue[2], onValueChange, uiAccentColor); InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode) }
+                Column(modifier = Modifier.weight(1f).verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(16.dp)) { HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2], isGoldMode); BrightnessSlider(currentLocale, hsvValue[2], onValueChange, uiAccentColor); InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode) }
             }
         } else {
             Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2])
+                HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2], isGoldMode)
                 Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).widthIn(max = 450.dp), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor) }
                 BrightnessSlider(currentLocale, hsvValue[2], onValueChange, uiAccentColor)
                 InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode)
@@ -973,7 +1061,7 @@ fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor:
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun HeaderControls(modes: List<HarmonyMode>, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, isDarkMode: Boolean, onExport: () -> Unit, uiAccentColor: Color, brightness: Float) {
+private fun HeaderControls(modes: List<HarmonyMode>, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, isDarkMode: Boolean, onExport: () -> Unit, uiAccentColor: Color, brightness: Float, isGoldMode: Boolean) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(modifier = Modifier.weight(1f).height(42.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             modes.forEachIndexed { index, itemMode ->
@@ -985,15 +1073,15 @@ private fun HeaderControls(modes: List<HarmonyMode>, harmonyMode: HarmonyMode, o
                     onClick = { onModeChange(itemMode) },
                     modifier = Modifier.weight(1f).fillMaxHeight().shadow(isSelected.let { if (it) 6.dp else 2.dp }, shape),
                     shape = shape,
-                    color = if (isSelected) uiAccentColor else (if (isDarkMode) Color(0xFF111111) else Color(0xFFE0E0E0)),
+                    color = if (isSelected) (if (isGoldMode) Color.Transparent else uiAccentColor) else (if (isDarkMode) Color(0xFF111111) else Color(0xFFE0E0E0)),
                     border = BorderStroke(1.dp, if (isSelected) Color.White.copy(0.5f) else (if (isDarkMode) Color.White.copy(0.15f) else Color.Black.copy(0.1f)))
                 ) {
                     Box(modifier = Modifier
                         .fillMaxSize()
-                        .background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent))),
+                        .then(if (isSelected && isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.25f), Color.Transparent)))),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text(label, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = if (isSelected) (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black) else Color.Gray, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        Text(label, fontSize = 9.sp, fontWeight = FontWeight.ExtraBold, color = if (isSelected) (if (isGoldMode) Color(0xFF543B14) else (if (ColorUtils.isDark(uiAccentColor)) Color.White else Color.Black)) else Color.Gray, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                     }
                 }
             }
@@ -1209,7 +1297,7 @@ fun ExportDialog(harmonyColors: List<Color>, onDismiss: () -> Unit, currentColor
 }
 
 @Composable
-fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLocale: String, onToggleLanguage: () -> Unit, isCaosMode: Boolean, analogousCount: Int, fixedUiColorHex: String, colorBlindnessMode: String, favorites: Set<String>, onDismiss: () -> Unit, onUpdateSettings: (Boolean, Int, String, String) -> Unit) {
+fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLocale: String, onToggleLanguage: () -> Unit, isCaosMode: Boolean, analogousCount: Int, fixedUiColorHex: String, colorBlindnessMode: String, favorites: Set<String>, onDismiss: () -> Unit, onUpdateSettings: (Boolean, Int, String, String, Boolean) -> Unit, isGoldMode: Boolean) {
     var showBlindnessDropdown by remember { mutableStateOf(false) }
     val dialogBg = if (isDarkMode) Color(0xFF1A1A1A) else Color(0xFFE0E6ED)
     val textColor = if (isDarkMode) Color.White else Color.Black
@@ -1219,7 +1307,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
         onDismissRequest = onDismiss, 
         title = { 
             Text(
-                "AJUSTES", 
+                stringResource(R.string.settings).uppercase(), 
                 style = TextStyle(fontWeight = FontWeight.Black, fontSize = 20.sp, letterSpacing = 2.sp, color = textColor)
             ) 
         }, 
@@ -1233,7 +1321,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
             ) { 
                 // --- APARIENCIA ---
                 Column {
-                    Text("APARIENCIA", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Text(stringResource(R.string.appearance), style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(if(isDarkMode) Color.Black.copy(0.2f) else Color.White.copy(0.4f)).padding(horizontal = 12.dp),
@@ -1244,11 +1332,23 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
                         Text(stringResource(R.string.dark_mode), modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
                         Switch(checked = isDarkMode, onCheckedChange = { onToggleDarkMode() }) 
                     }
+
+                    Spacer(Modifier.height(8.dp))
+                    // --- MODO ORO TOGGLE ---
+                    Row(
+                        modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(if(isDarkMode) Color.Black.copy(0.2f) else Color.White.copy(0.4f)).padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) { 
+                        Icon(Icons.Default.WorkspacePremium, null, tint = Color(0xFF8C6221), modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(12.dp))
+                        Text(stringResource(R.string.gold_mode_premium), modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
+                        Switch(checked = isGoldMode, onCheckedChange = { onUpdateSettings(isCaosMode, analogousCount, fixedUiColorHex, colorBlindnessMode, it) }) 
+                    }
                 }
 
                 // --- ACCESIBILIDAD ---
                 Column {
-                    Text("ACCESIBILIDAD", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Text(stringResource(R.string.accessibility), style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
                     Spacer(Modifier.height(8.dp))
                     Box(modifier = Modifier.fillMaxWidth()) {
                         Surface(
@@ -1261,7 +1361,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
                             Row(modifier = Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Icon(Icons.Default.Visibility, null, tint = sectionTitleColor, modifier = Modifier.size(20.dp))
                                 Spacer(Modifier.width(12.dp))
-                                Text(colorBlindnessMode, modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
+                                Text(if (colorBlindnessMode == "None") stringResource(R.string.none) else colorBlindnessMode, modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
                                 Icon(Icons.Default.ArrowDropDown, null, tint = sectionTitleColor)
                             }
                         }
@@ -1272,9 +1372,9 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
                         ) {
                             listOf("None", "Protanopia", "Deuteranopia", "Tritanopia").forEach { mode ->
                                 DropdownMenuItem(
-                                    text = { Text(mode, color = if(isDarkMode) Color.White else Color.Black) },
+                                    text = { Text(if (mode == "None") stringResource(R.string.none) else mode, color = if(isDarkMode) Color.White else Color.Black) },
                                     onClick = { 
-                                        onUpdateSettings(isCaosMode, analogousCount, fixedUiColorHex, mode)
+                                        onUpdateSettings(isCaosMode, analogousCount, fixedUiColorHex, mode, isGoldMode)
                                         showBlindnessDropdown = false
                                     }
                                 )
@@ -1285,7 +1385,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
 
                 // --- IDIOMA ---
                 Column {
-                    Text("SISTEMA", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Text(stringResource(R.string.system), style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
                     Spacer(Modifier.height(8.dp))
                     Surface(
                         onClick = onToggleLanguage,
@@ -1304,7 +1404,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
 
                 // --- SINCRONIZACIÓN ---
                 Column {
-                    Text("PERSONALIZACIÓN", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Text(stringResource(R.string.customization), style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
                     Spacer(Modifier.height(8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(12.dp)).background(if(isDarkMode) Color.Black.copy(0.2f) else Color.White.copy(0.4f)).padding(horizontal = 12.dp),
@@ -1312,15 +1412,15 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
                     ) { 
                         Icon(Icons.Default.Sync, null, tint = sectionTitleColor, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text("Modo Caos (Sincronizar)", modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
-                        Switch(checked = isCaosMode, onCheckedChange = { onUpdateSettings(it, analogousCount, fixedUiColorHex, colorBlindnessMode) }) 
+                        Text(stringResource(R.string.chaos_mode), modifier = Modifier.weight(1f), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor))
+                        Switch(checked = isCaosMode, onCheckedChange = { onUpdateSettings(it, analogousCount, fixedUiColorHex, colorBlindnessMode, isGoldMode) }) 
                     }
                     
                     Spacer(Modifier.height(16.dp))
-                    Text("Número de análogos: $analogousCount", style = TextStyle(fontWeight = FontWeight.Medium, color = textColor, fontSize = 13.sp))
+                    Text(stringResource(R.string.analogous_count, analogousCount), style = TextStyle(fontWeight = FontWeight.Medium, color = textColor, fontSize = 13.sp))
                     Slider(
                         value = analogousCount.toFloat(), 
-                        onValueChange = { onUpdateSettings(isCaosMode, it.toInt(), fixedUiColorHex, colorBlindnessMode) }, 
+                        onValueChange = { onUpdateSettings(isCaosMode, it.toInt(), fixedUiColorHex, colorBlindnessMode, isGoldMode) }, 
                         valueRange = 5f..10f, 
                         steps = 4,
                         colors = SliderDefaults.colors(
@@ -1332,7 +1432,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
 
                 // --- COLOR FIJO ---
                 Column { 
-                    Text("COLOR DE INTERFAZ FIJO", style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
+                    Text(stringResource(R.string.fixed_ui_color), style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp))
                     Spacer(Modifier.height(12.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { 
                         val colors = listOf("#268CEF", "#FFD700", "#FF5722", "#4CAF50") + favorites.toList()
@@ -1344,7 +1444,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
                                     .clip(CircleShape)
                                     .background(color)
                                     .border(if (hex == fixedUiColorHex) 3.dp else 1.dp, textColor, CircleShape)
-                                    .clickable { onUpdateSettings(isCaosMode, analogousCount, hex, colorBlindnessMode) }
+                                    .clickable { onUpdateSettings(isCaosMode, analogousCount, hex, colorBlindnessMode, isGoldMode) }
                             ) 
                         } 
                     } 
@@ -1359,7 +1459,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
                 modifier = Modifier.padding(bottom = 12.dp, end = 12.dp)
             ) {
                 Text(
-                    "ACEPTAR", 
+                    stringResource(R.string.accept),
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
                     style = TextStyle(fontWeight = FontWeight.Black, color = if(isDarkMode) Color.Black else Color.White, fontSize = 12.sp)
                 )

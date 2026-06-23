@@ -33,4 +33,19 @@
     <string name="theme">Tema</string>
     <string name="dark_mode">Modo Oscuro</string>
     <string name="language">Idioma</string>
+    <string name="settings">Ajustes</string>
+    <string name="rate_us">Valóranos</string>
+    <string name="help">Ayuda</string>
+    <string name="premium">Premium</string>
+    <string name="sniper_mode">Modo Sniper</string>
+    <string name="gold_mode_premium">Modo Oro (Premium)</string>
+    <string name="appearance">APARIENCIA</string>
+    <string name="accessibility">ACCESIBILIDAD</string>
+    <string name="system">SISTEMA</string>
+    <string name="customization">PERSONALIZACIÓN</string>
+    <string name="chaos_mode">Modo Caos (Sincronizar)</string>
+    <string name="analogous_count">Número de análogos: %1$d</string>
+    <string name="fixed_ui_color">COLOR DE INTERFAZ FIJO</string>
+    <string name="accept">ACEPTAR</string>
+    <string name="none">Ninguno</string>
 </resources>

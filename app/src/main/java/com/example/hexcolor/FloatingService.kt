@@ -34,7 +34,7 @@ class FloatingService : Service() {
         isRunning = true
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         
-        root = LinearLayout(this).apply {
+        this.root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val padding = dpToPx(12f)
             setPadding(padding, padding, padding, padding)
@@ -93,7 +93,7 @@ class FloatingService : Service() {
 
         updateUI()
 
-        root.setOnTouchListener(object : View.OnTouchListener {
+        this.root.setOnTouchListener(object : View.OnTouchListener {
             private var initialX: Int = 0
             private var initialY: Int = 0
             private var initialTouchX: Float = 0f
