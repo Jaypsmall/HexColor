@@ -26,6 +26,7 @@ class FloatingService : Service() {
         var currentHarmony: List<String> = emptyList()
         var originalIndex: Int = 0
         var isDarkMode: Boolean = true
+        var isGoldMode: Boolean = false
         var isRunning = false
     }
 
@@ -144,12 +145,12 @@ class FloatingService : Service() {
         // Colores exactos sincronizados con la App (Gris Plata en modo Luz)
         val bgColor = if (isDarkMode) 0xFF262626.toInt() else 0xFFDDDDDD.toInt()
         val textColor = if (isDarkMode) 0xFFFFFFFF.toInt() else 0xFF000000.toInt()
-        val borderColor = if (isDarkMode) 0xFF444444.toInt() else 0xFFCCCCCC.toInt()
+        val borderColor = if (isGoldMode) 0xFFC29B47.toInt() else (if (isDarkMode) 0xFF444444.toInt() else 0xFFCCCCCC.toInt())
 
         val background = GradientDrawable().apply {
             setColor(bgColor)
             cornerRadius = dpToPx(16f).toFloat()
-            setStroke(dpToPx(1.5f), borderColor)
+            setStroke(dpToPx(if (isGoldMode) 1.5f else 1.2f), borderColor)
         }
         root.background = background
         
