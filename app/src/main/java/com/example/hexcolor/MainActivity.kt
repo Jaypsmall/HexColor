@@ -123,14 +123,18 @@ class MainActivity : ComponentActivity() {
             val colorBlindnessKey = remember { stringPreferencesKey("color_blindness_mode") }
             val goldModeKey = remember { booleanPreferencesKey("gold_mode") }
             
-            val colorBlindnessMode by context.dataStore.data.map { it[colorBlindnessKey] ?: "None" }.collectAsState(initial = "None")
-            val isGoldModeSetting by context.dataStore.data.map { it[goldModeKey] ?: false }.collectAsState(initial = false)
+            val colorBlindnessMode by remember(context.dataStore.data) {
+                context.dataStore.data.map { it[colorBlindnessKey] ?: "None" }
+            }.collectAsState(initial = "None")
+            val isGoldModeSetting by remember(context.dataStore.data) {
+                context.dataStore.data.map { it[goldModeKey] ?: false }
+            }.collectAsState(initial = false)
             
             var isDarkMode by rememberSaveable { mutableStateOf(true) }
             var showStartup by rememberSaveable { mutableStateOf(true) }
             
             LaunchedEffect(Unit) {
-                delay(2000)
+                delay(2000L) // Usando Long explícito para evitar confusión si no hay import de Duration
                 showStartup = false
             }
             
@@ -267,7 +271,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
             listOf(caos, count, hex, blind, gold, extractCount, lang)
         } 
     }
-    val settings by settingsFlow.collectAsState(initial = listOf(true, 7, "#268CEF", "None", false, 12, Locale.getDefault().language))
+    val settings by settingsFlow.collectAsState(initial = listOf(true, 7, "#268CEF", "None", false, 12, "en"))
     val isCaosMode = settings[0] as Boolean
     val analogousCount = settings[1] as Int
     val fixedUiColorHex = settings[2] as String
@@ -278,19 +282,19 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     val fixedUiColor = ColorManager.hexToColor(fixedUiColorHex) ?: Color(0xFF268CEF)
 
     // --- SAVERS ---
-    val ColorSaver = remember {
+    val colorSaver = remember {
         Saver<Color, Int>(
             save = { it.toArgb() },
             restore = { Color(it) }
         )
     }
-    val FloatArraySaver = remember {
+    val floatArraySaver = remember {
         listSaver<FloatArray, Float>(
             save = { it.toList() },
             restore = { it.toFloatArray() }
         )
     }
-    val ColorListSaver = remember {
+    val colorListSaver = remember {
         Saver<List<Color>, IntArray>(
             save = { it.map { c -> c.toArgb() }.toIntArray() },
             restore = { it.map { argb -> Color(argb) } }
@@ -332,7 +336,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         window.statusBarColor = android.graphics.Color.TRANSPARENT
     }
     
-    var currentLocale by remember { mutableStateOf(Locale.getDefault().language) }
+    var currentLocale by remember { mutableStateOf("en") }
     
     LaunchedEffect(savedLanguage) {
         if (savedLanguage != currentLocale) {
@@ -378,20 +382,25 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         }
     }
 
-    val colorItems = remember(currentColor, analogousCount) {
+    val originalLabel = stringResource(R.string.original)
+    val complementaryLabel = stringResource(R.string.complementary)
+    val analogousLabel = stringResource(R.string.analogous)
+    val triadicLabel = stringResource(R.string.triadic)
+
+    val colorItems = remember(currentColor, analogousCount, originalLabel, complementaryLabel, analogousLabel, triadicLabel) {
         val comp = ColorManager.getComplementary(currentColor)
         val analogous = ColorManager.getAnalogous(currentColor, analogousCount)
         val triadic = ColorManager.getTriadic(currentColor)
         val list = mutableListOf(
-            ColorItem("① " + context.getString(R.string.original), currentColor),
-            ColorItem("② " + context.getString(R.string.complementary), comp),
+            ColorItem("① $originalLabel", currentColor),
+            ColorItem("② $complementaryLabel", comp),
         )
         if (analogous.size >= 3) {
-            list.add(ColorItem("③ " + context.getString(R.string.analogous), analogous[analogous.size / 2 - 1]))
-            list.add(ColorItem("④ " + context.getString(R.string.analogous), analogous[analogous.size / 2 + 1]))
+            list.add(ColorItem("③ $analogousLabel", analogous[analogous.size / 2 - 1]))
+            list.add(ColorItem("④ $analogousLabel", analogous[analogous.size / 2 + 1]))
         }
-        list.add(ColorItem("⑤ " + context.getString(R.string.triadic), triadic[1]))
-        list.add(ColorItem("⑥ " + context.getString(R.string.triadic), triadic[2]))
+        list.add(ColorItem("⑤ $triadicLabel", triadic[1]))
+        list.add(ColorItem("⑥ $triadicLabel", triadic[2]))
         list.toList()
     }
 
@@ -414,7 +423,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                         scope.launch {
                             context.dataStore.edit { prefs ->
                                 val current = prefs[palettesKey] ?: emptySet()
-                                val newPaletteJson = "{\"name\":\"$fileName\", \"colors\":${matches.map { "\"$it\"" }}}"
+                                val newPaletteJson = "{\"name\":\"$fileName\", \"colors\":${matches.map { color -> "\"$color\"" }}}"
                                 prefs[palettesKey] = current + newPaletteJson
                             }
                             Toast.makeText(context, context.getString(R.string.import_success) + ": ${matches.size}", Toast.LENGTH_SHORT).show()
@@ -646,23 +655,16 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                         }
                     }
                 }
-            },
-            bottomBar = TODO(),
-            snackbarHost = TODO(),
-            floatingActionButton = TODO(),
-            floatingActionButtonPosition = TODO(),
-            contentColor = TODO(),
-            content = TODO()
-    }
+            }
         ) { innerPadding ->
-            Column(modifier = padding(innerPadding).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(modifier = Modifier.padding(innerPadding).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 HorizontalPager(state = pagerState, modifier = Modifier.weight(1f), verticalAlignment = Alignment.Top, beyondViewportPageCount = beyondBoundsPageCount) { page ->
                     when (page) {
                         0 -> Box(modifier = Modifier.fillMaxSize()) {
-                            PaletteScreen(isDarkMode, hexInput, { hexInput = it }, currentColor, { currentColor = it; hexInput = ColorManager.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, hsvValue, { hsvValue = it; currentColor = ColorManager.hsvToColor(it[0], it[1], it[2]); hexInput = ColorManager.colorToHex(currentColor) }, colorItems, { color -> val hex = ColorManager.colorToHex(if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode)); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); val hex = ColorManager.colorToHex(displayColor); clipboardManager.setText(AnnotatedString("$hex")); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, sniperState != SniperState.OFF, { sniperState = if (sniperState == SniperState.OFF) SniperState.WINDOWED else SniperState.OFF }, uiAccentColor, colorBlindnessMode, isGoldMode)
+                            PaletteScreen(isDarkMode, hexInput, { hexInput = it }, currentColor, { currentColor = it; hexInput = ColorManager.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, hsvValue, { hsvValue = it; currentColor = ColorManager.hsvToColor(it[0], it[1], it[2]); hexInput = ColorManager.colorToHex(currentColor) }, colorItems, { color -> val hexValue = ColorManager.colorToHex(if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode)); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hexValue }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); val hexValue = ColorManager.colorToHex(displayColor); clipboardManager.setText(AnnotatedString(hexValue)); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, sniperState != SniperState.OFF, { sniperState = if (sniperState == SniperState.OFF) SniperState.WINDOWED else SniperState.OFF }, uiAccentColor, colorBlindnessMode, isGoldMode)
                             if (sniperState != SniperState.OFF) SniperGodOverlay(sniperState, isDarkMode, isGoldMode, currentColor, uiAccentColor, { sniperState = it }, { currentColor = it; hexInput = ColorManager.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { val hex = ColorManager.colorToHex(if (colorBlindnessMode == "None") it else ColorManager.simulateColorBlindness(it, colorBlindnessMode)); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } })
                         }
-                        1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorManager.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); val hex = ColorManager.colorToHex(displayColor); clipboardManager.setText(AnnotatedString("$hex")); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorManager.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorManager.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(3) } }, currentLocale, uiAccentColor, colorBlindnessMode, { blind -> scope.launch { context.dataStore.edit { it[colorBlindnessKey] = blind } } }, isGoldMode)
+                        1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorManager.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); val hexValue = ColorManager.colorToHex(displayColor); clipboardManager.setText(AnnotatedString(hexValue)); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorManager.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorManager.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(3) } }, currentLocale, uiAccentColor, colorBlindnessMode, { blind -> scope.launch { context.dataStore.edit { it[colorBlindnessKey] = blind } } }, isGoldMode)
                         2 -> PickerScreen(isDarkMode, pickerBitmap, { pickerBitmap = it }, detectedPickerColors, { detectedPickerColors = it }, { val selected = if (colorBlindnessMode == "None") it else ColorManager.simulateColorBlindness(it, colorBlindnessMode); currentColor = selected; hexInput = ColorManager.colorToHex(selected); val h = FloatArray(3); android.graphics.Color.colorToHSV(selected.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } }, uiAccentColor, colorBlindnessMode, { color -> val hex = ColorManager.colorToHex(if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode)); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); val hex = ColorManager.colorToHex(displayColor); clipboardManager.setText(AnnotatedString(hex)); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, isGoldMode, extractCount, { count -> scope.launch { context.dataStore.edit { it[intPreferencesKey("extract_count")] = count } } }, currentLocale)
                         3 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorManager.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } }, isGoldMode)
                     }
@@ -725,7 +727,7 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) onSniperToggle() else Toast.makeText(context, "Permiso necesario", Toast.LENGTH_SHORT).show() }
     val hueGradientColors = remember(colorBlindnessMode) { listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red).map { if (colorBlindnessMode == "None") it else ColorManager.simulateColorBlindness(it, colorBlindnessMode) } }
     LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 150.dp), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item(span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             Column(modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(modifier = Modifier.fillMaxWidth().height(50.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(value = hexInput, onValueChange = onHexChange, modifier = Modifier.weight(1f).fillMaxHeight().border(fineBorder, buttonShape), placeholder = { Text("#RRGGBB", fontSize = 14.sp, color = Color.Gray) }, textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7), unfocusedContainerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7), focusedTextColor = if (isDarkMode) Color.White else Color.Black, unfocusedTextColor = if (isDarkMode) Color.White else Color.Black, focusedBorderColor = uiAccentColor.copy(0.5f), unfocusedBorderColor = Color.Transparent), shape = buttonShape, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
