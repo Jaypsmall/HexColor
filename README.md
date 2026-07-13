@@ -45,7 +45,9 @@ HexColor PRO es una potente y elegante herramienta de gestión, captura y genera
   <img src="https://github.com/user-attachments/assets/b46a1496-7349-47b7-a32e-bfd334d04ac6" width="30%" />
   <img src="https://github.com/user-attachments/assets/2d245544-ac08-433c-85ec-4b034a95aacd" width="30%" />
 </p>
-  
+
+  ![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=flat&logo=kotlin&logoColor=white)
+  ![Android](https://img.shields.io/badge/Android-3DDC84?style=flat&logo=android&logoColor=white)
 ---
 
 ## 🛠️ Arquitectura y Tecnologías (Opcional)
