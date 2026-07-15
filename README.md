@@ -32,11 +32,6 @@ HexColor PRO es una potente y elegante herramienta de gestión, captura y genera
 ## 📱 Capturas de Pantalla y Demostración
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/bda912f8-2391-405b-a35b-60bb3abd73a7" width="35%" />
-</p>
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/bda912f8-2391-405b-a35b-60bb3abd73a7" width="35%" />
   <img src="https://github.com/user-attachments/assets/edddda59-0d19-47cb-8730-33cc55de9116" width="30%" />
   <img src="https://github.com/user-attachments/assets/759101d1-5e71-4a09-9e7d-6d570a898851" width="30%" />
   <img src="https://github.com/user-attachments/assets/c9f88359-0e4f-4034-892e-a9309df573e0" width="30%" />
@@ -57,12 +52,16 @@ HexColor PRO es una potente y elegante herramienta de gestión, captura y genera
 
 ---
 
-## 📄 Licencia y Derechos de Autor
+## ⚖️ License & Copyright
 
-Copyright © 2026. Todos los derechos reservados. 
-El código fuente de esta aplicación es propiedad privada del desarrollador. Queda prohibida la reproducción, distribución o modificación no autorizada de este software.
+Este proyecto es propiedad exclusiva de **Jaypsmall (Architect_d4d)**. Todos los derechos están reservados.
+
+🚫 **Queda estrictamente prohibida** la reproducción, distribución, modificación, uso comercial o redistribución de este software, código o ejecutables sin el consentimiento previo y por escrito del autor original. 
+
+Para cualquier consulta o solicitud de uso, puedes contactar a través de: `pekipekistani22@gmail.com`
 
 ---
+
 *Desarrollado con 💛 por un Dev Independiente.*
 
 
