@@ -5,9 +5,9 @@ HexColor PRO is a powerful, elegant tool for managing, capturing, and generating
 ---
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/49a545a9-dee3-4675-9582-519fd8c05306" width="33%" />
-  <img src="https://github.com/user-attachments/assets/39994e29-aae1-4455-bd30-8fc07eed2ce5" width="33%" />
-  <img src="https://github.com/user-attachments/assets/a7a41b8b-7197-4199-b594-bd8889ca3e55" width="33%" />
+  <img src="https://github.com/user-attachments/assets/49a545a9-dee3-4675-9582-519fd8c05306" width="30%" />
+  <img src="https://github.com/user-attachments/assets/39994e29-aae1-4455-bd30-8fc07eed2ce5" width="30%" />
+  <img src="https://github.com/user-attachments/assets/a7a41b8b-7197-4199-b594-bd8889ca3e55" width="30%" />
 </p>
 
 ---
