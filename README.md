@@ -1,69 +1,72 @@
 # 🎨 HexColor PRO (v1.0.4)
 
-HexColor PRO es una potente y elegante herramienta de gestión, captura y generación de paletas de colores diseñada específicamente para desarrolladores de software, diseñadores UI/UX y creadores visuales. Con una interfaz limpia en tonos oscuros y dorados, ofrece todo lo necesario para dominar el color en tus proyectos.
+HexColor PRO is a powerful, elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
 
 ---
-
-## ✨ Características Principales
-
-* **🔮 Rueda HSL Dinámica (Modo Luna):** Explora el espectro cromático de forma visual e intuitiva con un selector en forma de luna. Ajusta brillos y sombras al milímetro.
-* **📷 Modo Sniper & Extractor de Cámara:** Captura cualquier color del mundo real en tiempo real. Utiliza el modo ventana o la pantalla completa para apuntar con la cámara de tu móvil y obtener el código exacto al instante.
-* **🧠 Generador Automático de Armonías:** Obtén al instante combinaciones perfectas basadas en la teoría del color:
-    * Colores Complementarios
-    * Colores Análogos (¡Personaliza el número de análogos simultáneos!)
-    * Combinaciones Triádicas
-* **♿ Accesibilidad Integrada (WCAG Pass):** Comprueba en tiempo real el ratio de contraste de tus textos sobre el color elegido para asegurar que tus diseños cumplen con los estándares de accesibilidad.
-* **🗂️ Gestión de Paletas & Favoritos:** Guarda tus colores preferidos, organiza tus colecciones y ponles nombres personalizados para no perder nunca la inspiración.
-* **⚙️ Altamente Personalizable:** * Modo Oscuro / Modo Oro (Premium) / Modo Caos.
-    * Soporte multiidioma (ES/EN).
-    * Ajuste de color de interfaz fijo.
-
----
-
-## 🚀 Productividad para Desarrolladores (Exportación Directa)
-
-¡Deja de copiar códigos uno a uno! HexColor PRO te permite exportar tus paletas completas con un solo toque en los formatos más utilizados en la industria:
-* **Variables CSS** (Para desarrollo web)
-* **JSON Array** (Para integraciones y configuraciones de software)
-* **Android XML** (Listo para pegar en tu archivo `colors.xml`)
-
----
-
-## 📱 Capturas de Pantalla y Demostración
 
 <p align="center">
-  <img src="https://github.com/user-attachments/assets/edddda59-0d19-47cb-8730-33cc55de9116" width="30%" />
-  <img src="https://github.com/user-attachments/assets/759101d1-5e71-4a09-9e7d-6d570a898851" width="30%" />
-  <img src="https://github.com/user-attachments/assets/c9f88359-0e4f-4034-892e-a9309df573e0" width="30%" />
-  <img src="https://github.com/user-attachments/assets/663f1693-5776-4392-a1b0-99d67a7d6f47" width="30%" />
-  <img src="https://github.com/user-attachments/assets/6b6b491a-fa89-480c-8523-dc667d628f78" width="30%" />
-  <img src="https://github.com/user-attachments/assets/b46a1496-7349-47b7-a32e-bfd334d04ac6" width="30%" />
-  <img src="https://github.com/user-attachments/assets/2d245544-ac08-433c-85ec-4b034a95aacd" width="30%" />
+  <img src="https://github.com/user-attachments/assets/49a545a9-dee3-4675-9582-519fd8c05306" width="33%" />
+  <img src="https://github.com/user-attachments/assets/39994e29-aae1-4455-bd30-8fc07eed2ce5" width="33%" />
+  <img src="https://github.com/user-attachments/assets/a7a41b8b-7197-4199-b594-bd8889ca3e55" width="33%" />
+</p>
+
+---
+
+## ✨ Key Features
+
+* **🔮 Dynamic HSL Wheel (Moon Mode):** Explore the color spectrum visually and intuitively using a moon-shaped picker. Fine-tune highlights and shadows with precision.
+* **📷 Sniper Mode & Camera Extractor:** Capture any real-world color in real-time. Use windowed or full-screen mode to aim your mobile camera and instantly get the exact color code.
+* **🧠 Automatic Harmony Generator:** Instantly get perfect color combinations based on color theory:
+    * Complementary Colors
+    * Analogous Colors (Customize the number of simultaneous analogous colors!)
+    * Triadic Combinations
+* **♿ Built-in Accessibility (WCAG Compliant):** Check the contrast ratio of text against your chosen color in real-time to ensure your designs meet accessibility standards.
+* **🗂️ Palette & Favorites Management:** Save your favorite colors, organize collections, and assign custom names so you never lose your inspiration.
+* **⚙️ Highly Customizable:** * Dark Mode / Gold Mode (Premium) / Chaos Mode.
+    * Multi-language support (ES/EN).
+    * Fixed interface color settings.
+
+---
+
+## 🚀 Developer Productivity (Direct Export)
+
+Stop copying codes one by one! HexColor PRO lets you export entire palettes with a single tap in industry-standard formats:
+* **CSS Variables** (For web development)
+* **JSON Array** (For software integrations and configurations)
+* **Android XML** (Ready to paste into your `colors.xml` file)
+
+---
+
+## 📱 Screenshots and Demo
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/7c25443d-586c-4934-bb0f-89ee4e5e51ac" width="100%" />
+  <img src="https://github.com/user-attachments/assets/eba6a851-1365-4112-a50a-4a93b7a1b5cd" width="100%" />
 </p>
 
   ![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=flat&logo=kotlin&logoColor=white)
   ![Android](https://img.shields.io/badge/Android-3DDC84?style=flat&logo=android&logoColor=white)
+
 ---
 
-## 🛠️ Arquitectura y Tecnologías (Opcional)
+## 🛠️ Architecture and Technologies (Optional)
 
-* **Plataforma:** Android Nativo
-* **Herramientas de Optimización:** Ofuscación de código avanzada mediante **R8 / ProGuard** para garantizar la seguridad y el rendimiento del ejecutable.
+* **Platform:** Native Android
+* **Optimization Tools:** Advanced code obfuscation using **R8 / ProGuard** to ensure the security and performance of the executable.
 
 ---
 
 ## ⚖️ License & Copyright
 
-Este proyecto es propiedad exclusiva de **Jaypsmall (Architect_d4d)**. Todos los derechos están reservados.
+This project is the exclusive property of **Jaypsmall (Architect_d4d)**. All rights reserved.
 
-🚫 **Queda estrictamente prohibida** la reproducción, distribución, modificación, uso comercial o redistribución de este software, código o ejecutables sin el consentimiento previo y por escrito del autor original. 
+🚫 **Strictly prohibited:** Reproduction, distribution, modification, commercial use, or redistribution of this software, code, or executables without the prior written consent of the original author.
 
-Para cualquier consulta o solicitud de uso, puedes contactar a través de: `pekipekistani22@gmail.com`
+For any inquiries or usage requests, please contact: `pekipekistani22@gmail.com`
 
 ---
 
-*Desarrollado con 💛 por un Dev Independiente.*
-
+*Developed with 💛 by an Independent Dev.*
 
 
 
