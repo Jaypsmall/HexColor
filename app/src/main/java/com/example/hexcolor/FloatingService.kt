@@ -13,6 +13,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import android.util.TypedValue
+import androidx.core.graphics.toColorInt
 
 class FloatingService : Service() {
 
@@ -167,13 +168,13 @@ class FloatingService : Service() {
                 }
                 
                 val bg = GradientDrawable().apply {
-                    setColor(android.graphics.Color.parseColor(colorHex))
+                    setColor(colorHex.toColorInt())
                     cornerRadius = dpToPx(6f).toFloat()
                     if (index == originalIndex) {
                         setStroke(dpToPx(2.5f), if (isDarkMode) android.graphics.Color.WHITE else android.graphics.Color.BLACK)
                     }
                 }
-                this.background = bg
+                bg.also { this.background = it }
                 
                 setOnClickListener {
                     val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
