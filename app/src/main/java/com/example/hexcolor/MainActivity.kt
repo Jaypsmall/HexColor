@@ -52,6 +52,7 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.LibraryBooks
@@ -250,6 +251,9 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     val scope = rememberCoroutineScope()
     val clipboardManager = LocalClipboardManager.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    
+    // Inicializar el idioma con el del sistema o el guardado
+    var currentLocale by rememberSaveable { mutableStateOf(Locale.getDefault().language) }
 
     val favoritesKey = remember { stringSetPreferencesKey("fav_colors") }
     val palettesKey = remember { stringSetPreferencesKey("user_palettes") }
@@ -272,7 +276,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
             listOf(caos, count, hex, blind, gold, extractCount, lang)
         } 
     }
-    val settings by settingsFlow.collectAsState(initial = listOf(true, 7, "#268CEF", "None", false, 12, "en"))
+    val settings by settingsFlow.collectAsState(initial = listOf(true, 7, "#268CEF", "None", false, 12, currentLocale))
     val isCaosMode = settings[0] as Boolean
     val analogousCount = settings[1] as Int
     val fixedUiColorHex = settings[2] as String
@@ -302,21 +306,21 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         )
     }
     
-    var hexInput by remember { mutableStateOf("#21DD10") }
-    var currentColor by remember { mutableStateOf(Color(0xFF21DD10)) }
+    var hexInput by rememberSaveable { mutableStateOf("#21DD10") }
+    var currentColor by rememberSaveable(stateSaver = colorSaver) { mutableStateOf(Color(0xFF21DD10)) }
     
-    var hsvValue by remember {
+    var hsvValue by rememberSaveable(stateSaver = floatArraySaver) {
         val hsv = FloatArray(3)
         android.graphics.Color.colorToHSV(currentColor.toArgb(), hsv)
         mutableStateOf(hsv)
     }
 
     var pickerBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var detectedPickerColors by remember { mutableStateOf<List<Color>>(emptyList()) }
+    var detectedPickerColors by rememberSaveable(stateSaver = colorListSaver) { mutableStateOf(emptyList<Color>()) }
 
-    var harmonyMode by remember { mutableStateOf(HarmonyMode.COMPLEMENTARY) }
-    var sniperState by remember { mutableStateOf(SniperState.OFF) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
+    var harmonyMode by rememberSaveable { mutableStateOf(HarmonyMode.COMPLEMENTARY) }
+    var sniperState by rememberSaveable { mutableStateOf(SniperState.OFF) }
+    var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
 
     val uiAccentColor = remember(isGoldMode, isCaosMode, hsvValue, fixedUiColor, colorBlindnessMode) {
         val raw = if (isGoldMode) {
@@ -334,13 +338,14 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         val window = (context as Activity).window
         val insetsController = WindowCompat.getInsetsController(window, statusView)
         insetsController.isAppearanceLightStatusBars = !isDarkMode
+        @Suppress("DEPRECATION")
         window.statusBarColor = android.graphics.Color.TRANSPARENT
     }
     
-    var currentLocale by rememberSaveable { mutableStateOf("en") }
-    
     LaunchedEffect(savedLanguage) {
-        if (savedLanguage != currentLocale) {
+        // Solo recreamos si el idioma de DataStore es diferente al que ya tenemos cargado
+        // Y evitamos el flicker inicial comparando con un valor por defecto si es necesario.
+        if (savedLanguage != currentLocale && savedLanguage.isNotEmpty()) {
             val locale = Locale.forLanguageTag(savedLanguage)
             Locale.setDefault(locale)
             val config = context.resources.configuration
@@ -408,9 +413,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     val pagerState = rememberPagerState(pageCount = { 4 })
     val beyondBoundsPageCount = 1
 
-    LaunchedEffect(pagerState.currentPage, drawerState.isOpen) {
-        focusManager.clearFocus()
-    }
+    // Eliminamos el clearFocus automático que causaba conflictos con el teclado
 
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
@@ -658,7 +661,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                 }
             }
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(modifier = Modifier.padding(innerPadding).fillMaxSize().pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }, verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 HorizontalPager(state = pagerState, modifier = Modifier.weight(1f), verticalAlignment = Alignment.Top, beyondViewportPageCount = beyondBoundsPageCount) { page ->
                     when (page) {
                         0 -> Box(modifier = Modifier.fillMaxSize()) {
@@ -732,14 +735,37 @@ fun PickerScreen(isDarkMode: Boolean, bitmap: Bitmap?, onBitmapChange: (Bitmap?)
 
 @Composable
 fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -> Unit, currentColor: Color, onColorChange: (Color) -> Unit, hsvValue: FloatArray, onHsvChange: (FloatArray) -> Unit, colorItems: List<ColorItem>, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, isSniperMode: Boolean, onSniperToggle: () -> Unit, uiAccentColor: Color, colorBlindnessMode: String, isGoldMode: Boolean) {
-    val context = LocalContext.current; val buttonShape = RoundedCornerShape(12.dp); val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color(0xFFD1D5D8))
+    val context = LocalContext.current; val focusManager = LocalFocusManager.current; val buttonShape = RoundedCornerShape(12.dp); val fineBorder = BorderStroke(1.dp, if (isDarkMode) Color.White.copy(0.25f) else Color(0xFFD1D5D8))
     val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { if (it) onSniperToggle() else Toast.makeText(context, "Permiso necesario", Toast.LENGTH_SHORT).show() }
     val hueGradientColors = remember(colorBlindnessMode) { listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red).map { if (colorBlindnessMode == "None") it else ColorManager.simulateColorBlindness(it, colorBlindnessMode) } }
     LazyVerticalGrid(columns = GridCells.Adaptive(minSize = 150.dp), modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Column(modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp), verticalArrangement = Arrangement.spacedBy(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Row(modifier = Modifier.fillMaxWidth().height(50.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(value = hexInput, onValueChange = onHexChange, modifier = Modifier.weight(1f).fillMaxHeight().border(fineBorder, buttonShape), placeholder = { Text("#RRGGBB", fontSize = 14.sp, color = Color.Gray) }, textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold), colors = OutlinedTextFieldDefaults.colors(focusedContainerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7), unfocusedContainerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7), focusedTextColor = if (isDarkMode) Color.White else Color.Black, unfocusedTextColor = if (isDarkMode) Color.White else Color.Black, focusedBorderColor = uiAccentColor.copy(0.5f), unfocusedBorderColor = Color.Transparent), shape = buttonShape, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))
+                    OutlinedTextField(
+                        value = hexInput,
+                        onValueChange = onHexChange,
+                        modifier = Modifier.weight(1f).fillMaxHeight().border(fineBorder, buttonShape),
+                        placeholder = { Text("#RRGGBB", fontSize = 14.sp, color = Color.Gray) },
+                        textStyle = TextStyle(fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7),
+                            unfocusedContainerColor = if (isDarkMode) Color.Black else Color(0xFFF2F4F7),
+                            focusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                            unfocusedTextColor = if (isDarkMode) Color.White else Color.Black,
+                            focusedBorderColor = uiAccentColor.copy(0.5f),
+                            unfocusedBorderColor = Color.Transparent
+                        ),
+                        shape = buttonShape,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Ascii,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = { focusManager.clearFocus() }
+                        )
+                    )
                     Surface(onClick = { val color = ColorManager.hexToColor(hexInput); if (color != null) onColorChange(color) else Toast.makeText(context, context.getString(R.string.invalid_hex), Toast.LENGTH_SHORT).show() }, modifier = Modifier.width(85.dp).fillMaxHeight().shadow(4.dp, buttonShape), shape = buttonShape, color = if (isGoldMode) Color.Transparent else uiAccentColor, border = BorderStroke(1.dp, Color.White.copy(0.4f))) { Box(modifier = Modifier.fillMaxSize().then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))), contentAlignment = Alignment.Center) { Text(stringResource(R.string.show), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp, color = if (isGoldMode) Color(0xFF543B14) else (if (ColorManager.isDark(uiAccentColor)) Color.White else Color.Black)) } }
                     Surface(onClick = { if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) onSniperToggle() else permissionLauncher.launch(
                         Manifest.permission.CAMERA) }, modifier = Modifier.size(50.dp).shadow(4.dp, buttonShape), shape = buttonShape, color = if (isGoldMode) Color.Transparent else uiAccentColor, border = BorderStroke(1.dp, Color.White.copy(0.4f))) { Box(modifier = Modifier.fillMaxSize().then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))), contentAlignment = Alignment.Center) { Icon(Icons.Default.CameraAlt, "Sniper", tint = if (isGoldMode) Color(0xFF543B14) else (if (ColorManager.isDark(uiAccentColor)) Color.White else Color.Black)) } }
