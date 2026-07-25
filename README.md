@@ -1,4 +1,4 @@
-# 🎨 HexColor PRO (v1.0.4)
+# 🎨 HexColor PRO (v1.0.5)
 
 HexColor PRO es una potente y elegante herramienta de gestión, captura y generación de paletas de colores diseñada específicamente para desarrolladores de software, diseñadores UI/UX y creadores visuales. Con una interfaz limpia en tonos oscuros y dorados, ofrece todo lo necesario para dominar el color en tus proyectos.
 

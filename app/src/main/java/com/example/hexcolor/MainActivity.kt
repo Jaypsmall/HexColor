@@ -520,7 +520,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                     }
 
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "HexColor Pro v1.0.4", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.Gray else Color.DarkGray)
+                        Text(text = "HexColor Pro v1.0.5", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.Gray else Color.DarkGray)
                         Text(text = "Created by JAYLIZ with ❤️", fontSize = 9.sp, color = if (isDarkMode) Color.Gray.copy(0.6f) else Color.Gray, fontWeight = FontWeight.Medium)
                     }
                 }
@@ -787,17 +787,67 @@ fun PaletteScreen(isDarkMode: Boolean, hexInput: String, onHexChange: (String) -
 fun WheelScreen(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentColor: Color, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, harmonyMode: HarmonyMode, onModeChange: (HarmonyMode) -> Unit, harmonyColors: List<Color>, hsvValue: FloatArray, analogousCount: Int, onValueChange: (Float) -> Unit, onNavigateToFavorites: () -> Unit, currentLocale: String, uiAccentColor: Color, colorBlindnessMode: String, onColorBlindnessChange: (String) -> Unit, isGoldMode: Boolean) {
     val activity = LocalContext.current as? MainActivity; val modes = remember { listOf(HarmonyMode.COMPLEMENTARY, HarmonyMode.TRIADIC, HarmonyMode.ANALOGOUS) }
     var cardOffset by remember { mutableStateOf(Offset(0f, 0f)) }; var showExportDialog by remember { mutableStateOf(false) }
+    
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val isWide = maxWidth > 600.dp; val scrollState = rememberScrollState()
-        if (isWide) Row(modifier = Modifier.fillMaxSize().padding(10.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            Box(modifier = Modifier.weight(1.2f).fillMaxHeight(), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor, isGoldMode) }
-            Column(modifier = Modifier.weight(1f).verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(12.dp)) { HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2], isGoldMode); BrightnessSlider(currentLocale, hsvValue[2], onValueChange, currentColor, isGoldMode, uiAccentColor); InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode, isGoldMode) }
-        } else Column(modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 10.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2], isGoldMode)
-            Box(modifier = Modifier.fillMaxWidth().aspectRatio(1f).widthIn(max = 450.dp), contentAlignment = Alignment.Center) { WheelContent(isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, onToggleDarkMode, onNavigateToFavorites, uiAccentColor, isGoldMode) }
-            BrightnessSlider(currentLocale, hsvValue[2], onValueChange, currentColor, isGoldMode, uiAccentColor)
-            InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode, isGoldMode)
-            Spacer(modifier = Modifier.height(10.dp))
+        val isWide = maxWidth > 600.dp || (maxWidth > maxHeight && maxHeight < 500.dp)
+        val scrollState = rememberScrollState()
+        
+        if (isWide) {
+            // DISEÑO HORIZONTAL (Landscape)
+            Row(
+                modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Rueda a la izquierda
+                Box(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    WheelContent(
+                        isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, 
+                        hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, 
+                        onToggleDarkMode, onNavigateToFavorites, uiAccentColor, isGoldMode,
+                        isLandscape = true
+                    )
+                }
+                
+                // Controles a la derecha con scroll
+                Column(
+                    modifier = Modifier.weight(1.2f).fillMaxHeight().verticalScroll(scrollState),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(Modifier.height(8.dp))
+                    HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2], isGoldMode)
+                    BrightnessSlider(currentLocale, hsvValue[2], onValueChange, currentColor, isGoldMode, uiAccentColor)
+                    InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode, isGoldMode)
+                    Spacer(Modifier.height(16.dp))
+                }
+            }
+        } else {
+            // DISEÑO VERTICAL (Portrait)
+            Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(scrollState).padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                HeaderControls(modes, harmonyMode, onModeChange, isDarkMode, { showExportDialog = true }, uiAccentColor, hsvValue[2], isGoldMode)
+                Box(
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f).widthIn(max = 450.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    WheelContent(
+                        isDarkMode, colorBlindnessMode, onColorBlindnessChange, currentColor, 
+                        hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, 
+                        onToggleDarkMode, onNavigateToFavorites, uiAccentColor, isGoldMode,
+                        isLandscape = false
+                    )
+                }
+                BrightnessSlider(currentLocale, hsvValue[2], onValueChange, currentColor, isGoldMode, uiAccentColor)
+                InfoCard(isDarkMode, currentColor, harmonyColors, onCopyColor, activity, harmonyMode, cardOffset, { cardOffset += it }, uiAccentColor, colorBlindnessMode, isGoldMode)
+                Spacer(modifier = Modifier.height(12.dp))
+            }
         }
     }
     if (showExportDialog) ExportDialog(harmonyColors, { showExportDialog = false }, uiAccentColor, isGoldMode, isDarkMode)
@@ -822,12 +872,13 @@ private fun HeaderControls(modes: List<HarmonyMode>, harmonyMode: HarmonyMode, o
 }
 
 @Composable
-private fun WheelContent(isDarkMode: Boolean, colorBlindnessMode: String, onColorBlindnessChange: (String) -> Unit, currentColor: Color, hsvValue: FloatArray, harmonyMode: HarmonyMode, analogousCount: Int, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, onToggleDarkMode: () -> Unit, onNavigateToFavorites: () -> Unit, uiAccentColor: Color, isGoldMode: Boolean) {
+private fun WheelContent(isDarkMode: Boolean, colorBlindnessMode: String, onColorBlindnessChange: (String) -> Unit, currentColor: Color, hsvValue: FloatArray, harmonyMode: HarmonyMode, analogousCount: Int, onColorSelect: (Color) -> Unit, onCopyColor: (Color) -> Unit, onToggleDarkMode: () -> Unit, onNavigateToFavorites: () -> Unit, uiAccentColor: Color, isGoldMode: Boolean, isLandscape: Boolean) {
     val moonResource = if (hsvValue[2] > 0.5f) R.drawable.moon_light else R.drawable.moon_shadow; var showBlindnessMenu by remember { mutableStateOf(false) }
+    val wheelPadding = if (isLandscape) 20.dp else 40.dp
     Box(contentAlignment = Alignment.Center) {
-        ColorWheel(isDarkMode, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, Modifier.fillMaxSize().padding(40.dp), uiAccentColor, colorBlindnessMode, isGoldMode)
-        Box(modifier = Modifier.fillMaxSize().padding(40.dp), contentAlignment = Alignment.Center) { Crossfade(targetState = moonResource, animationSpec = tween(400), label = "MoonTransition") { targetResource -> Image(painter = painterResource(id = targetResource), contentDescription = "Moon", modifier = Modifier.fillMaxSize(0.65f), contentScale = ContentScale.Fit) } }
-        Row(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).offset(y = (-11).dp), verticalAlignment = Alignment.CenterVertically) {
+        ColorWheel(isDarkMode, currentColor, hsvValue, harmonyMode, analogousCount, onColorSelect, onCopyColor, Modifier.fillMaxSize().padding(wheelPadding), uiAccentColor, colorBlindnessMode, isGoldMode)
+        Box(modifier = Modifier.fillMaxSize().padding(wheelPadding), contentAlignment = Alignment.Center) { Crossfade(targetState = moonResource, animationSpec = tween(400), label = "MoonTransition") { targetResource -> Image(painter = painterResource(id = targetResource), contentDescription = "Moon", modifier = Modifier.fillMaxSize(0.65f), contentScale = ContentScale.Fit) } }
+        Row(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp).offset(y = if (isLandscape) (-4).dp else (-11).dp), verticalAlignment = Alignment.CenterVertically) {
             Box {
                 IconButton(onClick = { showBlindnessMenu = true }) { Icon(imageVector = Icons.Default.Visibility, contentDescription = "Sim", tint = if (colorBlindnessMode != "None") uiAccentColor else (if (isDarkMode) Color.Gray else Color.DarkGray), modifier = if (isGoldMode) Modifier.goldMask() else Modifier) }
                 DropdownMenu(expanded = showBlindnessMenu, onDismissRequest = { showBlindnessMenu = false }, containerColor = if (isDarkMode) Color(0xFF262626) else Color.White) { listOf("None", "Protanopia", "Deuteranopia", "Tritanopia").forEach { mode -> DropdownMenuItem(text = { Text(mode, color = if (colorBlindnessMode == mode) uiAccentColor else (if (isDarkMode) Color.White else Color.Black)) }, onClick = { onColorBlindnessChange(mode); showBlindnessMenu = false }) } }
@@ -982,7 +1033,7 @@ fun SettingsDialog(isDarkMode: Boolean, onToggleDarkMode: () -> Unit, currentLoc
             SettingsSection(stringResource(R.string.system), sectionTitleColor) { SettingsItem(Icons.Default.Language, stringResource(R.string.language), cardBg, textColor, isDarkMode, onClick = onToggleLanguage) { Text(if (currentLocale == "es") "ES \uD83C\uDDEA\uD83C\uDDF8" else "EN \uD83C\uDDFA\uD83C\uDDF8", fontWeight = FontWeight.Bold, color = textColor, fontSize = 13.sp) } }
             Spacer(Modifier.height(16.dp))
             SettingsSection(stringResource(R.string.customization), sectionTitleColor) { SettingsItem(Icons.Default.Sync, stringResource(R.string.chaos_mode), cardBg, textColor, isDarkMode) { Switch(checked = isCaosMode, onCheckedChange = { onUpdateSettings(it, analogousCount, fixedUiColorHex, colorBlindnessMode, isGoldMode) }) }; Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.analogous_count, analogousCount), style = TextStyle(fontWeight = FontWeight.Bold, color = textColor, fontSize = 13.sp)); Slider(value = analogousCount.toFloat(), onValueChange = { onUpdateSettings(isCaosMode, it.toInt(), fixedUiColorHex, colorBlindnessMode, isGoldMode) }, valueRange = 5f..10f, steps = 4, colors = SliderDefaults.colors(thumbColor = if (isGoldMode) Color(0xFFC29B47) else textColor, activeTrackColor = if (isGoldMode) Color(0xFFC29B47) else textColor.copy(0.4f))); Spacer(Modifier.height(12.dp)); Text(stringResource(R.string.fixed_ui_color).uppercase(), style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 11.sp, color = sectionTitleColor, letterSpacing = 1.sp)); Spacer(Modifier.height(8.dp)); LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) { items(listOf("#268CEF", "#FFD700", "#FF5722", "#4CAF50") + favorites.toList()) { hex -> val color = ColorManager.hexToColor(hex) ?: Color.Gray; Box(modifier = Modifier.size(44.dp).clip(CircleShape).background(color).border(if (hex == fixedUiColorHex) 3.dp else 1.dp, if (hex == fixedUiColorHex) (if (isGoldMode) Color(0xFFC29B47) else textColor) else textColor.copy(0.3f), CircleShape).clickable { onUpdateSettings(isCaosMode, analogousCount, hex, colorBlindnessMode, isGoldMode) }) } } }
-            Spacer(Modifier.height(32.dp)); Text("Version 1.0.4 PRO", fontSize = 11.sp, fontWeight = FontWeight.Black, color = sectionTitleColor.copy(0.5f)); Text("Created with ❤️ by JAYLIZ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = sectionTitleColor.copy(0.3f))
+            Spacer(Modifier.height(32.dp)); Text("Version 1.0.5 PRO", fontSize = 11.sp, fontWeight = FontWeight.Black, color = sectionTitleColor.copy(0.5f)); Text("Created with ❤️ by JAYLIZ", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = sectionTitleColor.copy(0.3f))
         }
     }
 }
