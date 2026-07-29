@@ -77,6 +77,8 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.Clipboard
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -249,7 +251,7 @@ fun Modifier.goldBorder(shape: RoundedCornerShape) = this
 fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val clipboardManager = LocalClipboardManager.current
+    val clipboardManager = LocalClipboard.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     
     // Inicializar el idioma con el del sistema o el guardado
@@ -687,6 +689,8 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     if (showSettingsDialog) SettingsDialog(isDarkMode, onToggleDarkMode, currentLocale, { toggleLanguage() }, isCaosMode, analogousCount, fixedUiColorHex, colorBlindnessMode, favorites, { showSettingsDialog = false }, { caos, count, hex, blind, gold -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex; prefs[colorBlindnessKey] = blind; prefs[goldModeKey] = gold } } }, isGoldMode)
 }
 
+private fun Clipboard.setText(annotatedString: AnnotatedString) {}
+
 @Composable
 fun PickerScreen(isDarkMode: Boolean, bitmap: Bitmap?, onBitmapChange: (Bitmap?) -> Unit, detectedColors: List<Color>, onDetectedColorsChange: (List<Color>) -> Unit, onColorSelect: (Color) -> Unit, uiAccentColor: Color, colorBlindnessMode: String, onSaveFavorite: (Color) -> Unit, onCopyColor: (Color) -> Unit, isGoldMode: Boolean, extractCount: Int, onUpdateExtractCount: (Int) -> Unit, currentLocale: String) {
     val context = LocalContext.current; var showExportDialog by remember { mutableStateOf(false) }
@@ -701,7 +705,8 @@ fun PickerScreen(isDarkMode: Boolean, bitmap: Bitmap?, onBitmapChange: (Bitmap?)
                         var scale by remember { mutableFloatStateOf(1f) }; var offset by remember { mutableStateOf(Offset.Zero) }
                         Box(modifier = Modifier.fillMaxSize().pointerInput(Unit) { detectTransformGestures { _, pan, zoom, _ -> scale = (scale * zoom).coerceIn(1f, 5f); offset += pan } }) {
                             Canvas(modifier = Modifier.fillMaxSize().pointerInput(bitmap) { detectTapGestures { tapOffset -> bitmap.let { b -> val cW = size.width.toFloat(); val cH = size.height.toFloat(); val bW = b.width.toFloat(); val bH = b.height.toFloat(); val sBase = min(cW / bW, cH / bH); val visualX = (tapOffset.x - offset.x - cW / 2) / scale + cW / 2; val visualY = (tapOffset.y - offset.y - cH / 2) / scale + cH / 2; val dx = (cW - bW * sBase) / 2; val dy = (cH - bH * sBase) / 2; val x = ((visualX - dx) / sBase).toInt().coerceIn(0, b.width - 1); val y = ((visualY - dy) / sBase).toInt().coerceIn(0, b.height - 1); onColorSelect(Color(b.getPixel(x, y))) } } }) {
-                                bitmap.let { b -> val cW = size.width; val cH = size.height; val bW = b.width.toFloat(); val bH = b.height.toFloat(); val sBase = min(cW.toFloat() / bW, cH.toFloat() / bH); val dx = (cW - bW * sBase) / 2; val dy = (cH - bH * sBase) / 2; withTransform({ translate(offset.x, offset.y); scale(scale, scale, pivot = center) }) { drawImage(image = b.asImageBitmap(), dstOffset = IntOffset(dx.toInt(), dy.toInt()), dstSize = IntSize((bW * sBase).toInt(), (bH * sBase).toInt())) } }
+                                bitmap.let { b -> val cW = size.width; val cH = size.height; val bW = b.width.toFloat(); val bH = b.height.toFloat(); val sBase = min(
+                                    cW / bW, cH / bH); val dx = (cW - bW * sBase) / 2; val dy = (cH - bH * sBase) / 2; withTransform({ translate(offset.x, offset.y); scale(scale, scale, pivot = center) }) { drawImage(image = b.asImageBitmap(), dstOffset = IntOffset(dx.toInt(), dy.toInt()), dstSize = IntSize((bW * sBase).toInt(), (bH * sBase).toInt())) } }
                             }
                         }
                     } else {
@@ -1004,16 +1009,114 @@ fun CameraSniper(onColorCaptured: (Color) -> Unit, onColorConfirmed: (Color) -> 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportDialog(harmonyColors: List<Color>, onDismiss: () -> Unit, currentColor: Color, isGoldMode: Boolean, isDarkMode: Boolean) {
-    val clipboard = LocalClipboardManager.current; val context = LocalContext.current
-    BasicAlertDialog(onDismissRequest = onDismiss, modifier = Modifier.fillMaxWidth(0.9f).shadow(24.dp, RoundedCornerShape(24.dp)).clip(RoundedCornerShape(24.dp)).background(if (isDarkMode) Color.Black else (if (ColorManager.isDark(currentColor)) Color(0xFF1A1A1A) else Color.White)).then(if (isGoldMode) Modifier.goldBorder(RoundedCornerShape(24.dp)) else Modifier)) {
-        Column(modifier = Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text("EXPORT PALETTE", style = TextStyle(fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 2.sp, color = if (isDarkMode) Color.White else (if (ColorManager.isDark(currentColor)) Color.White else Color.Black)), modifier = if (isGoldMode) Modifier.goldMask() else Modifier)
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                listOf(Pair("CSS Variables") { clipboard.setText(AnnotatedString(harmonyColors.mapIndexed { i, c -> "--color-${i+1}: ${ColorManager.colorToHex(c)};" }.joinToString("\n"))) }, Pair("JSON Array") { clipboard.setText(AnnotatedString("[\n" + harmonyColors.joinToString(",\n") { "  \"${ColorManager.colorToHex(it)}\"" } + "\n]")) }, Pair("Android XML") { clipboard.setText(AnnotatedString(harmonyColors.mapIndexed { i, c -> "<color name=\"palette_${i+1}\">${ColorManager.colorToHex(c)}</color>" }.joinToString("\n"))) }).forEach { (label, action) ->
-                    Surface(onClick = { action(); Toast.makeText(context, "$label Copied!", Toast.LENGTH_SHORT).show(); onDismiss() }, modifier = Modifier.fillMaxWidth().height(48.dp).shadow(4.dp, RoundedCornerShape(12.dp)), shape = RoundedCornerShape(12.dp), color = if (isGoldMode) Color.Transparent else currentColor, border = BorderStroke(1.dp, Color.White.copy(0.3f))) { Box(modifier = Modifier.fillMaxSize().then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))), contentAlignment = Alignment.Center) { Text(label, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp, color = if (isGoldMode) Color(0xFF543B14) else (if (ColorManager.isDark(currentColor)) Color.White else Color.Black)) } }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    
+    // Obtenemos el idioma actual para los mensajes
+    val currentLocale = remember { java.util.Locale.getDefault().language }
+    var exportFormat by remember { mutableStateOf("css") }
+    var showFilePicker by remember { mutableStateOf(false) }
+
+    // Launcher para guardar archivos (SAF)
+    val createFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument(
+            if (exportFormat == "json") "application/json" else if (exportFormat == "xml") "text/xml" else "text/css"
+        )
+    ) { uri ->
+        uri?.let {
+            scope.launch {
+                try {
+                    context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                        val content = when (exportFormat) {
+                            "css" -> harmonyColors.mapIndexed { i, c -> "--color-${i + 1}: ${ColorManager.colorToHex(c)};" }.joinToString("\n")
+                            "json" -> "[\n" + harmonyColors.joinToString(",\n") { "  \"${ColorManager.colorToHex(it)}\"" } + "\n]"
+                            "xml" -> "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n" + harmonyColors.mapIndexed { i, c -> "    <color name=\"palette_${i + 1}\">${ColorManager.colorToHex(c)}</color>" }.joinToString("\n") + "\n</resources>"
+                            else -> ""
+                        }
+                        outputStream.write(content.toByteArray())
+                    }
+                    val successMsg = if (currentLocale == "es") "Archivo guardado con éxito" else "File saved successfully"
+                    Toast.makeText(context, successMsg, Toast.LENGTH_SHORT).show()
+                    onDismiss()
+                } catch (e: Exception) {
+                    val errorMsg = if (currentLocale == "es") "Error al guardar" else "Error saving file"
+                    Toast.makeText(context, errorMsg, Toast.LENGTH_SHORT).show()
                 }
             }
-            TextButton(onClick = onDismiss) { Text("CLOSE", fontWeight = FontWeight.Bold, color = Color.Gray) }
+        }
+    }
+
+    BasicAlertDialog(
+        onDismissRequest = onDismiss,
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .shadow(24.dp, RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(if (isDarkMode) Color.Black else (if (ColorManager.isDark(currentColor)) Color(0xFF1A1A1A) else Color.White))
+            .then(if (isGoldMode) Modifier.goldBorder(RoundedCornerShape(24.dp)) else Modifier)
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Text(
+                "EXPORT PALETTE",
+                style = TextStyle(fontWeight = FontWeight.Black, fontSize = 18.sp, letterSpacing = 2.sp, color = if (isDarkMode) Color.White else (if (ColorManager.isDark(currentColor)) Color.White else Color.Black)),
+                modifier = if (isGoldMode) Modifier.goldMask() else Modifier
+            )
+
+            // Selector de formato más bonito
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                val formats = listOf(
+                    Triple("CSS Variables", "css", "palette.css"),
+                    Triple("JSON Array", "json", "palette.json"),
+                    Triple("Android XML", "xml", "colors.xml")
+                )
+                
+                formats.forEach { (label, ext, defaultName) ->
+                    Surface(
+                        onClick = {
+                            exportFormat = ext
+                            createFileLauncher.launch(defaultName)
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(52.dp)
+                            .shadow(4.dp, RoundedCornerShape(14.dp)),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isGoldMode) Color.Transparent else currentColor,
+                        border = BorderStroke(1.dp, Color.White.copy(0.3f))
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(if (isGoldMode) Modifier.goldButtonStyle() else Modifier.background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (ext == "css") Icons.Default.Code else if (ext == "json") Icons.Default.DataArray else Icons.Default.Android,
+                                    contentDescription = null,
+                                    tint = if (isGoldMode) Color(0xFF543B14) else (if (ColorManager.isDark(currentColor)) Color.White else Color.Black),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    label,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 14.sp,
+                                    color = if (isGoldMode) Color(0xFF543B14) else (if (ColorManager.isDark(currentColor)) Color.White else Color.Black)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            TextButton(onClick = onDismiss) {
+                Text("CANCEL", fontWeight = FontWeight.Bold, color = Color.Gray)
+            }
         }
     }
 }
