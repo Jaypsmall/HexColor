@@ -340,6 +340,12 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         val window = (context as Activity).window
         val insetsController = WindowCompat.getInsetsController(window, statusView)
         insetsController.isAppearanceLightStatusBars = !isDarkMode
+<<<<<<formatoH
+=======
+        // statusBarColor is deprecated but still the standard for transparency in many setups.
+        // If we want to be fully modern, we use WindowCompat.setDecorFitsSystemWindows(window, false)
+        // which is already likely called or handled by the theme/Scaffold.
+>>>>> master
         @Suppress("DEPRECATION")
         window.statusBarColor = android.graphics.Color.TRANSPARENT
     }
