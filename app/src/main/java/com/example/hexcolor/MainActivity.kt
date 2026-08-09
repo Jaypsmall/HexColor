@@ -104,6 +104,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.hexcolor.ui.FavoritesScreen
 import com.example.hexcolor.ui.theme.HexColorTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
@@ -313,8 +314,18 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     
     var hsvValue by rememberSaveable(stateSaver = floatArraySaver) {
         val hsv = FloatArray(3)
-        android.graphics.Color.colorToHSV(currentColor.toArgb(), hsv)
+        android.graphics.Color.colorToHSV(Color(0xFF21DD10).toArgb(), hsv)
         mutableStateOf(hsv)
+    }
+
+    // Sincronizar hsvValue cuando currentColor cambie desde fuentes externas (como favoritos o picker)
+    LaunchedEffect(currentColor) {
+        val hsv = FloatArray(3)
+        android.graphics.Color.colorToHSV(currentColor.toArgb(), hsv)
+        if (!hsv.contentEquals(hsvValue)) {
+            hsvValue = hsv
+            hexInput = ColorManager.colorToHex(currentColor)
+        }
     }
 
     var pickerBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -348,9 +359,8 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     }
     
     LaunchedEffect(savedLanguage) {
-        // Solo recreamos si el idioma de DataStore es diferente al que ya tenemos cargado
-        // Y evitamos el flicker inicial comparando con un valor por defecto si es necesario.
-        if (savedLanguage != currentLocale && savedLanguage.isNotEmpty()) {
+        // Solo recreamos si el idioma de DataStore es realmente diferente y no es el primer ajuste
+        if (savedLanguage != Locale.getDefault().language && savedLanguage.isNotEmpty()) {
             val locale = Locale.forLanguageTag(savedLanguage)
             Locale.setDefault(locale)
             val config = context.resources.configuration
@@ -358,7 +368,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
             @Suppress("DEPRECATION")
             context.resources.updateConfiguration(config, context.resources.displayMetrics)
             currentLocale = savedLanguage
-            if (context is MainActivity) context.recreate()
+            (context as? Activity)?.recreate()
         }
     }
 
@@ -683,7 +693,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                         }
                         1 -> WheelScreen(isDarkMode, onToggleDarkMode, currentColor, { currentColor = it; hexInput = ColorManager.colorToHex(it); val h = FloatArray(3); android.graphics.Color.colorToHSV(it.toArgb(), h); hsvValue = h }, { color -> val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); val hexValue = ColorManager.colorToHex(displayColor); clipboardManager.setText(AnnotatedString(hexValue)); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, harmonyMode, { harmonyMode = it }, harmonyColors, hsvValue, analogousCount, { v -> val newHsv = hsvValue.clone().apply { this[2] = v }; hsvValue = newHsv; currentColor = ColorManager.hsvToColor(newHsv[0], newHsv[1], newHsv[2]); hexInput = ColorManager.colorToHex(currentColor) }, { scope.launch { pagerState.animateScrollToPage(3) } }, currentLocale, uiAccentColor, colorBlindnessMode, { blind -> scope.launch { context.dataStore.edit { it[colorBlindnessKey] = blind } } }, isGoldMode)
                         2 -> PickerScreen(isDarkMode, pickerBitmap, { pickerBitmap = it }, detectedPickerColors, { detectedPickerColors = it }, { val selected = if (colorBlindnessMode == "None") it else ColorManager.simulateColorBlindness(it, colorBlindnessMode); currentColor = selected; hexInput = ColorManager.colorToHex(selected); val h = FloatArray(3); android.graphics.Color.colorToHSV(selected.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } }, uiAccentColor, colorBlindnessMode, { color -> val hex = ColorManager.colorToHex(if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode)); scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current + hex }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, { color -> val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); val hex = ColorManager.colorToHex(displayColor); clipboardManager.setText(AnnotatedString(hex)); Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show() }, isGoldMode, extractCount, { count -> scope.launch { context.dataStore.edit { it[intPreferencesKey("extract_count")] = count } } }, currentLocale)
-                        3 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorManager.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } }, isGoldMode)
+                        3 -> FavoritesScreen(isDarkMode, favorites, savedPalettes, { favHex -> val favColor = ColorManager.hexToColor(favHex); if (favColor != null) { currentColor = favColor; hexInput = favHex; val h = FloatArray(3); android.graphics.Color.colorToHSV(favColor.toArgb(), h); hsvValue = h; scope.launch { pagerState.animateScrollToPage(1) } } }, { favHex -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[favoritesKey] ?: emptySet(); prefs[favoritesKey] = current - favHex }; Toast.makeText(context, context.getString(R.string.deleted), Toast.LENGTH_SHORT).show() } }, { paletteJson -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); prefs[palettesKey] = current - paletteJson } } }, { name, colors -> scope.launch { context.dataStore.edit { prefs -> val current = prefs[palettesKey] ?: emptySet(); val newPaletteJson = "{\"name\":\"$name\", \"colors\":${colors.map { color -> "\"$color\"" }}}"; prefs[palettesKey] = current + newPaletteJson }; Toast.makeText(context, context.getString(R.string.saved), Toast.LENGTH_SHORT).show() } }, isGoldMode)
                     }
                 }
             }
@@ -920,41 +930,6 @@ private fun InfoCard(isDarkMode: Boolean, currentColor: Color, harmonyColors: Li
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, contentPadding = PaddingValues(horizontal = 4.dp)) { items(harmonyColors.size) { index -> val color = harmonyColors[index]; val displayColor = if (colorBlindnessMode == "None") color else ColorManager.simulateColorBlindness(color, colorBlindnessMode); Column(horizontalAlignment = Alignment.CenterHorizontally) { Box(modifier = Modifier.size(42.dp).clip(RoundedCornerShape(8.dp)).background(displayColor).border(1.dp, if (isDarkMode) Color(0xFF444444) else Color(0xFFAAAAAA), RoundedCornerShape(8.dp)).clickable { onCopyColor(color) }, contentAlignment = Alignment.Center) { Text(text = (index + 1).toString(), color = if (ColorManager.isDark(displayColor)) Color.White else Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp) }; Text(ColorManager.colorToHex(color).substring(1), color = Color.Gray, fontSize = 9.sp) } } }
             }
         }
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-fun FavoritesScreen(isDarkMode: Boolean, favorites: Set<String>, savedPalettes: Set<String>, onColorSelect: (String) -> Unit, onDeleteFavorite: (String) -> Unit, onDeletePalette: (String) -> Unit, isGoldMode: Boolean) {
-    val bgColor = remember(isDarkMode) { if (isDarkMode) Color.Black else Color(0xFFF2F4F7) }
-    val cardColor = remember(isDarkMode) { if (isDarkMode) Color(0xFF1E1E1E) else Color.White }
-    val borderColor = remember(isDarkMode) { if (isDarkMode) Color.White.copy(0.12f) else Color.Black.copy(0.08f) }
-    val boxShape = RoundedCornerShape(10.dp)
-
-    // Parseamos las paletas una sola vez cuando cambian las guardadas
-    val parsedPalettes = remember(savedPalettes) {
-        savedPalettes.map { paletteJson ->
-            try {
-                val name = paletteJson.substringAfter("\"name\":\"").substringBefore("\"")
-                val colorsStr = paletteJson.substringAfter("\"colors\":[").substringBefore("]")
-                val colors = colorsStr.split(",").map { it.replace("\"", "").trim() }.filter { it.isNotEmpty() }
-                Triple(name, colors, paletteJson)
-            } catch (e: Exception) {
-                Triple("Imported Palette", emptyList<String>(), paletteJson)
-            }
-        }
-    }
-
-    Column(modifier = Modifier.fillMaxSize().background(bgColor).padding(16.dp).verticalScroll(rememberScrollState())) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.History, null, tint = Color.Gray, modifier = Modifier.size(18.dp).then(if (isGoldMode) Modifier.goldMask() else Modifier)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.favorites_header).uppercase(), color = if (isDarkMode) Color.LightGray else Color(0xFF444444), fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp, modifier = if (isGoldMode) Modifier.goldMask() else Modifier) }
-        Spacer(Modifier.height(16.dp))
-        if (favorites.isEmpty()) Box(modifier = Modifier.fillMaxWidth().height(80.dp).background(cardColor, RoundedCornerShape(12.dp)).border(1.dp, borderColor, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) { Text("Sin colores guardados", color = Color.Gray, fontSize = 11.sp, fontWeight = FontWeight.Medium) }
-        else FlowRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) { favorites.forEach { favHex -> val color = ColorManager.hexToColor(favHex) ?: Color.Gray; Box(modifier = Modifier.size(60.dp).shadow(4.dp, boxShape).clip(boxShape).background(color).then(if (isGoldMode) Modifier.goldBorder(boxShape) else Modifier.border(1.5.dp, if (isDarkMode) Color.White.copy(0.2f) else Color.Black.copy(0.1f), boxShape)).combinedClickable(onClick = { onColorSelect(favHex) }, onLongClick = { onDeleteFavorite(favHex) })) { Box(modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(0.2f), Color.Transparent)))) } } }
-        Spacer(Modifier.height(32.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) { Icon(Icons.AutoMirrored.Filled.LibraryBooks, null, tint = Color.Gray, modifier = Modifier.size(18.dp).then(if (isGoldMode) Modifier.goldMask() else Modifier)); Spacer(Modifier.width(8.dp)); Text(stringResource(R.string.palettes_tab).uppercase(), color = if (isDarkMode) Color.LightGray else Color(0xFF444444), fontSize = 14.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp, modifier = if (isGoldMode) Modifier.goldMask() else Modifier) }
-        Spacer(Modifier.height(16.dp))
-        if (parsedPalettes.isEmpty()) Box(modifier = Modifier.fillMaxWidth().height(120.dp).background(cardColor, RoundedCornerShape(12.dp)).then(if (isGoldMode) Modifier.goldBorder(RoundedCornerShape(12.dp)) else Modifier.border(1.dp, borderColor, RoundedCornerShape(12.dp))), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.Palette, null, tint = Color.Gray.copy(0.3f), modifier = Modifier.size(32.dp)); Spacer(Modifier.height(8.dp)); Text(stringResource(R.string.no_palettes), color = Color.Gray, fontSize = 11.sp) } }
-        else parsedPalettes.forEach { (name, colors, originalJson) -> val cardShape = RoundedCornerShape(16.dp); Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp).then(if (isGoldMode) Modifier.goldBorder(cardShape) else Modifier), shape = cardShape, colors = CardDefaults.cardColors(containerColor = cardColor), elevation = CardDefaults.cardElevation(defaultElevation = 4.dp), border = if (isGoldMode) null else BorderStroke(1.dp, borderColor)) { Column(modifier = Modifier.padding(14.dp)) { Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Column(modifier = Modifier.weight(1f)) { Text(name.replace(".css", ""), fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = if (isDarkMode) Color.White else Color.Black, maxLines = 1, overflow = TextOverflow.Ellipsis); Text("${colors.size} COLORES", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Gray, letterSpacing = 0.5.sp) }; IconButton(onClick = { onDeletePalette(originalJson) }, modifier = Modifier.size(32.dp).background(Color.Red.copy(0.1f), CircleShape)) { Icon(Icons.Default.Delete, null, tint = Color.Red.copy(0.8f), modifier = Modifier.size(16.dp)) } } ; Spacer(Modifier.height(12.dp)); Row(modifier = Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(8.dp)).then(if (isGoldMode) Modifier.goldBorder(RoundedCornerShape(8.dp)) else Modifier.border(1.dp, borderColor, RoundedCornerShape(8.dp)))) { colors.forEach { colorHex -> val color = ColorManager.hexToColor(colorHex) ?: Color.Gray; Box(modifier = Modifier.weight(1f).fillMaxHeight().background(color).clickable { onColorSelect(colorHex) }) } } } } }
     }
 }
 
