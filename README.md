@@ -1,7 +1,8 @@
 # 🎨 HexColor PRO (v1.0.5)
 
-HexColor PRO is a powerful, elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
+**HexColor PRO** is a powerful, elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
 
+* **https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk**
 ---
 
 <p align="center">
