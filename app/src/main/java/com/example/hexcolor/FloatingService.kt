@@ -122,7 +122,7 @@ class FloatingService : Service() {
                     MotionEvent.ACTION_MOVE -> {
                         val dx = (event.rawX - initialTouchX).toInt()
                         val dy = (event.rawY - initialTouchY).toInt()
-                        if (abs(dx) > 5 || Math.abs(dy) > 5) moved = true
+                        if (abs(dx) > 5 || abs(dy) > 5) moved = true
                         params.x = initialX + dx
                         params.y = initialY + dy
                         windowManager.updateViewLayout(root, params)
