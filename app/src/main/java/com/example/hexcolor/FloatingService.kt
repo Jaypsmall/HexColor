@@ -14,6 +14,7 @@ import android.widget.TextView
 import android.widget.Toast
 import android.util.TypedValue
 import androidx.core.graphics.toColorInt
+import kotlin.math.abs
 
 class FloatingService : Service() {
 
@@ -121,7 +122,7 @@ class FloatingService : Service() {
                     MotionEvent.ACTION_MOVE -> {
                         val dx = (event.rawX - initialTouchX).toInt()
                         val dy = (event.rawY - initialTouchY).toInt()
-                        if (Math.abs(dx) > 5 || Math.abs(dy) > 5) moved = true
+                        if (abs(dx) > 5 || Math.abs(dy) > 5) moved = true
                         params.x = initialX + dx
                         params.y = initialY + dy
                         windowManager.updateViewLayout(root, params)
