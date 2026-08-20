@@ -101,7 +101,7 @@ class FloatingService : Service() {
 
         updateUI()
 
-        this.root.setOnTouchListener(object : View.OnTouchListener {
+        root.setOnTouchListener(object : View.OnTouchListener {
             private var initialX: Int = 0
             private var initialY: Int = 0
             private var initialTouchX: Float = 0f
