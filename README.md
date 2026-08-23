@@ -1,6 +1,4 @@
-# 🎨 HexColor PRO (v1.0.5)
-
-![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=yellow) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=yellow) 
+# 🎨 HexColor PRO (v1.0.5)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=yellow) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=yellow) 
 
 **HexColor PRO** is a powerful, elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
 
