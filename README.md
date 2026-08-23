@@ -5,6 +5,8 @@
 * **https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk**
 
 ---
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/76c8fbe6-290a-4f5e-93d2-fcace542a941" width="90%" />
 
 <p align="center">
   <img src="https://github.com/user-attachments/assets/49a545a9-dee3-4675-9582-519fd8c05306" width="30%" />
