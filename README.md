@@ -1,8 +1,11 @@
 # 🎨 HexColor PRO (v1.0.5)
 
+![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=yellow) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=yellow) 
+
 **HexColor PRO** is a powerful, elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
 
 * **https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk**
+
 ---
 
 <p align="center">
@@ -44,9 +47,6 @@ Stop copying codes one by one! HexColor PRO lets you export entire palettes with
   <img src="https://github.com/user-attachments/assets/7c25443d-586c-4934-bb0f-89ee4e5e51ac" width="100%" />
   <img src="https://github.com/user-attachments/assets/eba6a851-1365-4112-a50a-4a93b7a1b5cd" width="100%" />
 </p>
-
-  ![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=flat&logo=kotlin&logoColor=white)
-  ![Android](https://img.shields.io/badge/Android-3DDC84?style=flat&logo=android&logoColor=white)
 
 ---
 
