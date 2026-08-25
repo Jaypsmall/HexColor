@@ -114,7 +114,7 @@ main {
 }
 
 section {
-  padding: 90px 0;
+  padding: 20px 0;
 }
 
 .intro {
@@ -142,7 +142,11 @@ section {
 }
 
 .screenshots1 {
-  margin-top: 40px;
+  margin-top: 45px;
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 22px;
 }
 
 .screenshots1 img {
