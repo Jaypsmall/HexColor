@@ -141,6 +141,16 @@ section {
   border-radius: 14px;
 }
 
+.screenshots1 {
+  margin-top: 40px;
+}
+
+.screenshots1 img {
+  display: block;
+  width: 100%;
+  margin-bottom: 25px;
+}
+
 .screenshots-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
