@@ -35,7 +35,7 @@ a {
   min-height: 78vh;
   display: grid;
   place-items: center;
-  padding: 80px 20px;
+  padding: 20px 20px;
   text-align: center;
 }
 
@@ -142,7 +142,7 @@ section {
 }
 
 .screenshots1 {
-  margin-top: 45px;
+  margin-top: 25px;
   padding: 12px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -152,7 +152,7 @@ section {
 .screenshots1 img {
   display: block;
   width: 100%;
-  margin-bottom: 25px;
+  margin-bottom: 15px;
 }
 
 .screenshots-grid {
