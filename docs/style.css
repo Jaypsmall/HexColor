@@ -142,17 +142,18 @@ section {
 }
 
 .screenshots1 {
-  margin-top: 25px;
-  padding: 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 22px;
+  display: block;
+  width: 100%;
+  border-radius: 14px;
+  margin-top: 16px;
 }
 
 .screenshots1 img {
-  display: block;
   width: 100%;
-  margin-bottom: 15px;
+  display: block;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--panel);
 }
 
 .screenshots-grid {
@@ -174,7 +175,7 @@ section {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
-  margin-top: 40px;
+  margin-top: 30px;
 }
 
 .feature-grid article {
@@ -221,7 +222,7 @@ section {
 
 .download {
   text-align: center;
-  padding-bottom: 120px;
+  padding-bottom: 80px;
 }
 
 footer {
