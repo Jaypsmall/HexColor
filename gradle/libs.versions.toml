@@ -13,7 +13,7 @@ camerax = "1.6.2"
 palette = "1.0.0"
 core-splashscreen = "1.2.0"
 material3 = "1.4.0"
-foundation = "1.11.4"
+foundation = "1.12.0"
 
 [libraries]
 androidx-camera-core = { group = "androidx.camera", name = "camera-core", version.ref = "camerax" }
