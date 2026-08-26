@@ -3,142 +3,308 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="HexColor PRO, herramienta profesional de color para Android.">
+
+  <meta name="description"
+        content="HexColor PRO, herramienta profesional de color para Android.">
+
   <title>HexColor PRO | Color tools for developers</title>
+
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+
   <header class="hero">
+
     <div class="hero-content">
-      <div class="badge">ANDROID • KOTLIN • v1.0.6</div>
-      <h1>HexColor <span>PRO</span></h1>
-      <p class="subtitle">
-        Color palettes, camera extraction, HSL exploration and accessibility tools
-        built for developers, designers and visual creators.
+
+      <!-- LANGUAGE SWITCHER -->
+      <div class="language-switcher">
+        <button class="lang-btn active" data-lang="es">ES</button>
+        <span>•</span>
+        <button class="lang-btn" data-lang="en">EN</button>
+      </div>
+
+      <div class="badge">
+        ANDROID • KOTLIN • v1.0.6
+      </div>
+
+      <h1>
+        HexColor <span>PRO</span>
+      </h1>
+
+      <p class="subtitle" data-i18n="hero.subtitle">
+        Color palettes, camera extraction, HSL exploration and accessibility
+        tools built for developers, designers and visual creators.
       </p>
 
       <div class="actions">
+
         <a class="button primary"
-           href="https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk">
+           href="https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk"
+           data-i18n="buttons.download">
           ↓ Download APK
         </a>
+
         <a class="button secondary"
-           href="https://github.com/Jaypsmall/HexColor">
+           href="https://github.com/Jaypsmall/HexColor"
+           data-i18n="buttons.github">
           View on GitHub
         </a>
+
       </div>
-      
-    <div class="screenshots1">
-      <img src="https://github.com/user-attachments/assets/7c25443d-586c-4934-bb0f-89ee4e5e51ac" 
-          alt="HexColor PRO screenshot1 1" width="100%">
-      <img src="https://github.com/user-attachments/assets/eba6a851-1365-4112-a50a-4a93b7a1b5cd"
-          alt="HexColor PRO screenshot1 2" width="100%">
+
+      <div class="screenshots1">
+
+        <img src="https://github.com/user-attachments/assets/7c25443d-586c-4934-bb0f-89ee4e5e51ac"
+             alt="HexColor PRO screenshot 1"
+             width="100%">
+
+        <img src="https://github.com/user-attachments/assets/eba6a851-1365-4112-a50a-4a93b7a1b5cd"
+             alt="HexColor PRO screenshot 2"
+             width="100%">
+
+      </div>
+
     </div>
-      
+
   </header>
 
+
   <main>
+
+    <!-- SHOWCASE -->
+
     <section class="showcase">
+
       <div class="intro">
-        <p class="eyebrow">COLOR WORKSPACE</p>
-        <h2>Everything you need to work with color.</h2>
-        <p>
+
+        <p class="eyebrow" data-i18n="workspace.eyebrow">
+          COLOR WORKSPACE
+        </p>
+
+        <h2 data-i18n="workspace.title">
+          Everything you need to work with color.
+        </h2>
+
+        <p data-i18n="workspace.description">
           Explore, capture, generate and organize colors from one Android
           application with a dark interface and gold accents.
         </p>
+
       </div>
+
 
       <div class="screenshots">
+
         <img src="https://github.com/user-attachments/assets/76c8fbe6-290a-4f5e-93d2-fcace542a941"
              alt="HexColor PRO interface">
+
       </div>
+
 
       <div class="screenshots-grid">
+
         <img src="https://github.com/user-attachments/assets/49a545a9-dee3-4675-9582-519fd8c05306"
              alt="HexColor PRO screenshot 1">
+
         <img src="https://github.com/user-attachments/assets/39994e29-aae1-4455-bd30-8fc07eed2ce5"
              alt="HexColor PRO screenshot 2">
+
         <img src="https://github.com/user-attachments/assets/a7a41b8b-7197-4199-b594-bd8889ca3e55"
              alt="HexColor PRO screenshot 3">
+
       </div>
-      
+
     </section>
+
+
+    <!-- FEATURES -->
 
     <section class="features">
-      <p class="eyebrow">FEATURES</p>
-      <h2>A complete color toolkit</h2>
 
-      <div class="feature-grid">
-        <article>
-          <div class="icon">◉</div>
-          <h3>Dynamic HSL Wheel</h3>
-          <p>Explore the color spectrum visually with the Moon Mode picker and fine-tune highlights and shadows.</p>
-        </article>
-
-        <article>
-          <div class="icon">⌾</div>
-          <h3>Sniper & Camera</h3>
-          <p>Extract real-world colors directly through the camera in windowed or full-screen mode.</p>
-        </article>
-
-        <article>
-          <div class="icon">✦</div>
-          <h3>Color Harmonies</h3>
-          <p>Generate complementary, analogous and triadic combinations automatically.</p>
-        </article>
-
-        <article>
-          <div class="icon">✓</div>
-          <h3>WCAG Accessibility</h3>
-          <p>Check text contrast ratios in real time against your selected colors.</p>
-        </article>
-
-        <article>
-          <div class="icon">▦</div>
-          <h3>Palettes & Favorites</h3>
-          <p>Save colors, organize collections and give your favorite colors custom names.</p>
-        </article>
-
-        <article>
-          <div class="icon">{ }</div>
-          <h3>Developer Export</h3>
-          <p>Export palettes as CSS Variables, JSON arrays or Android XML colors.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="developer">
-      <p class="eyebrow">FOR DEVELOPERS</p>
-      <h2>From palette to project.</h2>
-      <p>
-        HexColor PRO is designed to reduce the friction between choosing a color
-        and actually using it in a project.
+      <p class="eyebrow" data-i18n="features.eyebrow">
+        FEATURES
       </p>
 
+      <h2 data-i18n="features.title">
+        A complete color toolkit
+      </h2>
+
+
+      <div class="feature-grid">
+
+        <article>
+
+          <div class="icon">◉</div>
+
+          <h3 data-i18n="features.hsl.title">
+            Dynamic HSL Wheel
+          </h3>
+
+          <p data-i18n="features.hsl.description">
+            Explore the color spectrum visually with the Moon Mode picker
+            and fine-tune highlights and shadows.
+          </p>
+
+        </article>
+
+
+        <article>
+
+          <div class="icon">⌾</div>
+
+          <h3 data-i18n="features.camera.title">
+            Sniper & Camera
+          </h3>
+
+          <p data-i18n="features.camera.description">
+            Extract real-world colors directly through the camera in
+            windowed or full-screen mode.
+          </p>
+
+        </article>
+
+
+        <article>
+
+          <div class="icon">✦</div>
+
+          <h3 data-i18n="features.harmonies.title">
+            Color Harmonies
+          </h3>
+
+          <p data-i18n="features.harmonies.description">
+            Generate complementary, analogous and triadic combinations
+            automatically.
+          </p>
+
+        </article>
+
+
+        <article>
+
+          <div class="icon">✓</div>
+
+          <h3 data-i18n="features.wcag.title">
+            WCAG Accessibility
+          </h3>
+
+          <p data-i18n="features.wcag.description">
+            Check text contrast ratios in real time against your selected colors.
+          </p>
+
+        </article>
+
+
+        <article>
+
+          <div class="icon">▦</div>
+
+          <h3 data-i18n="features.palettes.title">
+            Palettes & Favorites
+          </h3>
+
+          <p data-i18n="features.palettes.description">
+            Save colors, organize collections and give your favorite colors
+            custom names.
+          </p>
+
+        </article>
+
+
+        <article>
+
+          <div class="icon">{ }</div>
+
+          <h3 data-i18n="features.export.title">
+            Developer Export
+          </h3>
+
+          <p data-i18n="features.export.description">
+            Export palettes as CSS Variables, JSON arrays or Android XML colors.
+          </p>
+
+        </article>
+
+      </div>
+
+    </section>
+
+
+    <!-- DEVELOPER -->
+
+    <section class="developer">
+
+      <p class="eyebrow" data-i18n="developer.eyebrow">
+        FOR DEVELOPERS
+      </p>
+
+      <h2 data-i18n="developer.title">
+        From palette to project.
+      </h2>
+
+      <p data-i18n="developer.description">
+        HexColor PRO is designed to reduce the friction between choosing
+        a color and actually using it in a project.
+      </p>
+
+
       <div class="code-card">
-        <div class="code-title">EXPORT FORMATS</div>
+
+        <div class="code-title" data-i18n="developer.formats">
+          EXPORT FORMATS
+        </div>
+
         <code>
           CSS Variables<br>
           JSON Array<br>
           Android XML
         </code>
+
       </div>
+
     </section>
+
+
+    <!-- DOWNLOAD -->
 
     <section class="download">
-      <h2>Ready to work with color?</h2>
-      <p>Download HexColor PRO for Android.</p>
+
+      <h2 data-i18n="download.title">
+        Ready to work with color?
+      </h2>
+
+      <p data-i18n="download.description">
+        Download HexColor PRO for Android.
+      </p>
+
       <a class="button primary"
-         href="https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk">
+         href="https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk"
+         data-i18n="download.button">
         Download HexColor PRO
       </a>
+
     </section>
+
   </main>
 
+
   <footer>
-    <p>HexColor PRO · Developed with 💛 by Jaypsmall (Architect_D4d)</p>
-    <a href="https://github.com/Jaypsmall/HexColor">GitHub Repository</a>
+
+    <p data-i18n="footer.credit">
+      HexColor PRO · Developed with 💛 by Jaypsmall (Architect_D4d)
+    </p>
+
+    <a href="https://github.com/Jaypsmall/HexColor"
+       data-i18n="footer.github">
+      GitHub Repository
+    </a>
+
   </footer>
+
+
+  <script src="translations.js"></script>
+
 </body>
 </html>
