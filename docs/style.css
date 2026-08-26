@@ -222,7 +222,7 @@ section {
 
 .download {
   text-align: center;
-  padding-bottom: 80px;
+  padding-bottom: 60px;
 }
 
 footer {
@@ -239,8 +239,8 @@ footer a {
 
 .language-switcher {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: right;
+  justify-content: right;
   gap: 8px;
   margin-bottom: 20px;
 }
@@ -271,7 +271,7 @@ footer a {
   font-size: 12px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 1120px) {
   .hero {
     min-height: 70vh;
   }
@@ -282,6 +282,6 @@ footer a {
   }
 
   section {
-    padding: 65px 0;
+    padding: 45px 0;
   }
 }
