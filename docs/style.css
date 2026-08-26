@@ -226,7 +226,7 @@ section {
 }
 
 footer {
-  padding: 30px 20px;
+  padding: 20px 20px;
   text-align: center;
   border-top: 1px solid var(--border);
   color: var(--muted);
@@ -235,6 +235,40 @@ footer {
 footer a {
   color: var(--gold);
   text-decoration: none;
+}
+
+.language-switcher {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.lang-btn {
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.lang-btn:hover {
+  color: #d4af37;
+  transform: translateY(-1px);
+}
+
+.lang-btn.active {
+  color: #d4af37;
+}
+
+.language-switcher span {
+  color: #555;
+  font-size: 12px;
 }
 
 @media (max-width: 760px) {
