@@ -5,18 +5,14 @@ plugins {
 
 android {
     namespace = "com.example.hexcolor"
-    compileSdk {
-        version = release(36) {
-            minorApiLevel = 1
-        }
-    }
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.example.hexcolor"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 2
-        versionName = "1.0.5"
+        versionName = "1.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

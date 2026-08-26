@@ -535,7 +535,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                     }
 
                     Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "HexColor Pro v1.0.5", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.Gray else Color.DarkGray)
+                        Text(text = "HexColor Pro v1.0.6", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = if (isDarkMode) Color.Gray else Color.DarkGray)
                         Text(text = "Created by JAYLIZ with ❤️", fontSize = 9.sp, color = if (isDarkMode) Color.Gray.copy(0.6f) else Color.Gray, fontWeight = FontWeight.Medium)
                     }
                 }
