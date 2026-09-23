@@ -1,14 +1,16 @@
-# 🎨 HexColor PRO (v1.0.5)
+# 🎨 HexColor PRO (v1.0.6)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=yellow) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=yellow) 
 
-**HexColor PRO** is a powerful, elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
+**HexColor PRO** is Premium Apk,elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
 
-* **https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk**
+ **https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk**
+
 ---
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/49a545a9-dee3-4675-9582-519fd8c05306" width="30%" />
-  <img src="https://github.com/user-attachments/assets/39994e29-aae1-4455-bd30-8fc07eed2ce5" width="30%" />
-  <img src="https://github.com/user-attachments/assets/a7a41b8b-7197-4199-b594-bd8889ca3e55" width="30%" />
+<p align="center" width="100%">
+  <img src="https://github.com/user-attachments/assets/76c8fbe6-290a-4f5e-93d2-fcace542a941" width="99%" />
+  <img src="https://github.com/user-attachments/assets/49a545a9-dee3-4675-9582-519fd8c05306" width="32%" />
+  <img src="https://github.com/user-attachments/assets/39994e29-aae1-4455-bd30-8fc07eed2ce5" width="32%" />
+  <img src="https://github.com/user-attachments/assets/a7a41b8b-7197-4199-b594-bd8889ca3e55" width="32%" />
 </p>
 
 ---
@@ -31,7 +33,7 @@
 
 ## 🚀 Developer Productivity (Direct Export)
 
-Stop copying codes one by one! HexColor PRO lets you export entire palettes with a single tap in industry-standard formats:
+Stop copying codes one by one! **HexColor PRO** lets you export entire palettes with a single tap in industry-standard formats:
 * **CSS Variables** (For web development)
 * **JSON Array** (For software integrations and configurations)
 * **Android XML** (Ready to paste into your `colors.xml` file)
@@ -44,9 +46,6 @@ Stop copying codes one by one! HexColor PRO lets you export entire palettes with
   <img src="https://github.com/user-attachments/assets/7c25443d-586c-4934-bb0f-89ee4e5e51ac" width="100%" />
   <img src="https://github.com/user-attachments/assets/eba6a851-1365-4112-a50a-4a93b7a1b5cd" width="100%" />
 </p>
-
-  ![Kotlin](https://img.shields.io/badge/kotlin-%237F52FF.svg?style=flat&logo=kotlin&logoColor=white)
-  ![Android](https://img.shields.io/badge/Android-3DDC84?style=flat&logo=android&logoColor=white)
 
 ---
 
