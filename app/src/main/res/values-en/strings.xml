@@ -48,4 +48,8 @@
     <string name="fixed_ui_color">FIXED UI COLOR</string>
     <string name="accept">ACCEPT</string>
     <string name="none">None</string>
+    <string name="spectrum_converter">Visible Spectrum (nm)</string>
+    <string name="spectrum_title">SPECTRUM CONVERTER</string>
+    <string name="wavelength">Wavelength (nm)</string>
+    <string name="use_color">Use this color</string>
 </resources>

@@ -48,4 +48,8 @@
     <string name="fixed_ui_color">COLOR DE INTERFAZ FIJO</string>
     <string name="accept">ACEPTAR</string>
     <string name="none">Ninguno</string>
+    <string name="spectrum_converter">Espectro Visible (nm)</string>
+    <string name="spectrum_title">CONVERSOR DE ESPECTRO</string>
+    <string name="wavelength">Longitud de onda (nm)</string>
+    <string name="use_color">Usar este color</string>
 </resources>

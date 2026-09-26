@@ -129,4 +129,63 @@ object ColorManager {
             color.alpha
         )
     }
+
+    fun wavelengthToColor(wavelength: Float): Color {
+        val gamma = 0.80f
+        val intensityMax = 255f
+
+        val (rRaw, gRaw, bRaw) = when {
+            wavelength in 380f..439.999f -> {
+                val attenuation = 0.3f + 0.7f * (wavelength - 380f) / (440f - 380f)
+                Triple(
+                    ((-(wavelength - 440f) / (440f - 380f)) * attenuation).toDouble().pow(gamma.toDouble()).toFloat(),
+                    0f,
+                    (1.0f * attenuation).toDouble().pow(gamma.toDouble()).toFloat()
+                )
+            }
+            wavelength in 440f..489.999f -> {
+                Triple(
+                    0f,
+                    ((wavelength - 440f) / (490f - 440f)).toDouble().pow(gamma.toDouble()).toFloat(),
+                    1.0f
+                )
+            }
+            wavelength in 490f..509.999f -> {
+                Triple(
+                    0f,
+                    1.0f,
+                    (-(wavelength - 510f) / (510f - 490f)).toDouble().pow(gamma.toDouble()).toFloat()
+                )
+            }
+            wavelength in 510f..579.999f -> {
+                Triple(
+                    ((wavelength - 510f) / (580f - 510f)).toDouble().pow(gamma.toDouble()).toFloat(),
+                    1.0f,
+                    0f
+                )
+            }
+            wavelength in 580f..644.999f -> {
+                Triple(
+                    1.0f,
+                    (-(wavelength - 645f) / (645f - 580f)).toDouble().pow(gamma.toDouble()).toFloat(),
+                    0f
+                )
+            }
+            wavelength in 645f..780f -> {
+                val attenuation = 0.3f + 0.7f * (780f - wavelength) / (780f - 645f)
+                Triple(
+                    (1.0f * attenuation).toDouble().pow(gamma.toDouble()).toFloat(),
+                    0f,
+                    0f
+                )
+            }
+            else -> Triple(0f, 0f, 0f)
+        }
+
+        val r = (rRaw * intensityMax).roundToInt().coerceIn(0, 255)
+        val g = (gRaw * intensityMax).roundToInt().coerceIn(0, 255)
+        val b = (bRaw * intensityMax).roundToInt().coerceIn(0, 255)
+
+        return Color(r, g, b)
+    }
 }

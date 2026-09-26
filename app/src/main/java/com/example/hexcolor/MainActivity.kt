@@ -334,6 +334,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
     var harmonyMode by rememberSaveable { mutableStateOf(HarmonyMode.COMPLEMENTARY) }
     var sniperState by rememberSaveable { mutableStateOf(SniperState.OFF) }
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    var showSpectrumDialog by rememberSaveable { mutableStateOf(false) }
 
     val uiAccentColor = remember(isGoldMode, isCaosMode, hsvValue, fixedUiColor, colorBlindnessMode) {
         val raw = if (isGoldMode) {
@@ -528,6 +529,7 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
                         NavigationDrawerItem(label = { Text(stringResource(R.string.wheel), style = labelStyle) }, selected = pagerState.currentPage == 1, onClick = { scope.launch { pagerState.animateScrollToPage(1); drawerState.close() } }, icon = { Icon(Icons.Default.ColorLens, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 1) (if (isGoldMode) Modifier.goldBorder(RoundedCornerShape(100)) else Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100))) else Modifier))
                         NavigationDrawerItem(label = { Text(stringResource(R.string.picker), style = labelStyle) }, selected = pagerState.currentPage == 2, onClick = { scope.launch { pagerState.animateScrollToPage(2); drawerState.close() } }, icon = { Icon(Icons.Default.Colorize, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 2) (if (isGoldMode) Modifier.goldBorder(RoundedCornerShape(100)) else Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100))) else Modifier))
                         NavigationDrawerItem(label = { Text(stringResource(R.string.favorites), style = labelStyle) }, selected = pagerState.currentPage == 3, onClick = { scope.launch { pagerState.animateScrollToPage(3); drawerState.close() } }, icon = { Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent, selectedContainerColor = uiAccentColor.copy(alpha = 0.15f), selectedTextColor = uiAccentColor, selectedIconColor = uiAccentColor), modifier = itemModifier.then(if(pagerState.currentPage == 3) (if (isGoldMode) Modifier.goldBorder(RoundedCornerShape(100)) else Modifier.border(0.5.dp, uiAccentColor, RoundedCornerShape(100))) else Modifier))
+                        NavigationDrawerItem(label = { Text(stringResource(R.string.spectrum_converter), style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close(); showSpectrumDialog = true } }, icon = { Icon(Icons.Default.WbSunny, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
                         NavigationDrawerItem(label = { Text(stringResource(R.string.import_palette), style = labelStyle) }, selected = false, onClick = { scope.launch { drawerState.close(); importLauncher.launch("text/css") } }, icon = { Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(20.dp)) }, colors = NavigationDrawerItemDefaults.colors(unselectedContainerColor = Color.Transparent), modifier = itemModifier)
                         
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = if (isDarkMode) Color(0xFF333333) else Color(0xFFEEEEEE))
@@ -700,6 +702,21 @@ fun HexColorApp(isDarkMode: Boolean, onToggleDarkMode: () -> Unit) {
         }
     }
     if (showSettingsDialog) SettingsDialog(isDarkMode, onToggleDarkMode, currentLocale, { toggleLanguage() }, isCaosMode, analogousCount, fixedUiColorHex, colorBlindnessMode, favorites, { showSettingsDialog = false }, { caos, count, hex, blind, gold -> scope.launch { context.dataStore.edit { prefs -> prefs[caosModeKey] = caos; prefs[analogousCountKey] = count; prefs[fixedUiColorKey] = hex; prefs[colorBlindnessKey] = blind; prefs[goldModeKey] = gold } } }, isGoldMode)
+    if (showSpectrumDialog) {
+        com.example.hexcolor.ui.SpectrumDialog(
+            isDarkMode = isDarkMode,
+            isGoldMode = isGoldMode,
+            uiAccentColor = uiAccentColor,
+            onDismiss = { showSpectrumDialog = false },
+            onSelectColor = { selected ->
+                currentColor = selected
+                hexInput = ColorManager.colorToHex(selected)
+                val h = FloatArray(3)
+                android.graphics.Color.colorToHSV(selected.toArgb(), h)
+                hsvValue = h
+            }
+        )
+    }
 }
 
 private fun Clipboard.setText(annotatedString: AnnotatedString) {}
