@@ -2,7 +2,9 @@
 
 **HexColor PRO** is Premium Apk,elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
 
-* **https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk**
+<a href="https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk">
+  <img src="https://img.shields.io/badge/DOWNLOAD_HEXCOLOR_PRO_v1.0.6_APK-181717?style=flat&logo=android&logoColor=yellow" alt="Download Android Release">
+</a>
 
 ---
 
