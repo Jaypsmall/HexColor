@@ -20,7 +20,7 @@
 ## ✨ Key Features
 
 * **🔮 Rueda HSL dinámica (modo Luna):** Explora el espectro de color de forma visual e intuitiva mediante un selector con forma de luna. Ajusta con precisión las luces y las sombras.
-* **📷 Sniper Mode & Camera Extractor:** Capture any real-world color in real-time. Use windowed or full-screen mode to aim your mobile camera and instantly get the exact color code.
+* **📷 Sniper Modo y extractor de cámara:** Captura cualquier color del mundo real en tiempo real. Usa el modo ventana o pantalla completa para apuntar con la cámara de tu móvil y obtener al instante el código de color exacto.
 * **🧠 Automatic Harmony Generator:** Instantly get perfect color combinations based on color theory:
     * Complementary Colors
     * Analogous Colors (Customize the number of simultaneous analogous colors!)
