@@ -33,12 +33,11 @@
 
 ---
 
-## 🚀 Developer Productivity (Direct Export)
+## 🚀 Productividad del desarrollador (Exportación directa)
 
-Stop copying codes one by one! **HexColor PRO** lets you export entire palettes with a single tap in industry-standard formats:
-* **CSS Variables** (For web development)
-* **JSON Array** (For software integrations and configurations)
-* **Android XML** (Ready to paste into your `colors.xml` file)
+¡Deja de copiar códigos uno por uno! **HexColor PRO** te permite exportar paletas completas con un solo toque en formatos estándar de la industria:
+* **Variables CSS** (Para desarrollo web) * **Array JSON** (Para integraciones y configuraciones de software) 
+* **XML de Android** (Listo para pegar en tu archivo `colors.xml`)
 
 ---
 
