@@ -1,6 +1,6 @@
 # 🎨 HexColor PRO (v1.0.6)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=yellow) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=yellow) 
 
-**HexColor PRO** is Premium Apk,elegant tool for managing, capturing, and generating color palettes, designed specifically for software developers, UI/UX designers, and visual creators. Featuring a clean interface in dark tones and gold accents, it offers everything you need to master color in your projects.
+**HexColor PRO** es una APK Premium, una elegante herramienta para gestionar, capturar y generar paletas de colores, diseñada específicamente para desarrolladores de software, diseñadores de UI/UX y creadores visuales. Con una interfaz limpia en tonos oscuros y detalles dorados, ofrece todo lo que necesitas para dominar el color en tus proyectos.
 
 <a href="https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk">
   <img src="https://img.shields.io/badge/DOWNLOAD_HEXCOLOR_PRO_v1.0.6_APK-181717?style=flat&logo=android&logoColor=yellow" alt="Download Android Release">
@@ -19,7 +19,7 @@
 
 ## ✨ Key Features
 
-* **🔮 Dynamic HSL Wheel (Moon Mode):** Explore the color spectrum visually and intuitively using a moon-shaped picker. Fine-tune highlights and shadows with precision.
+* **🔮 Rueda HSL dinámica (modo Luna):** Explora el espectro de color de forma visual e intuitiva mediante un selector con forma de luna. Ajusta con precisión las luces y las sombras.
 * **📷 Sniper Mode & Camera Extractor:** Capture any real-world color in real-time. Use windowed or full-screen mode to aim your mobile camera and instantly get the exact color code.
 * **🧠 Automatic Harmony Generator:** Instantly get perfect color combinations based on color theory:
     * Complementary Colors
