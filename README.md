@@ -21,15 +21,15 @@
 
 * **🔮 Rueda HSL dinámica (modo Luna):** Explora el espectro de color de forma visual e intuitiva mediante un selector con forma de luna. Ajusta con precisión las luces y las sombras.
 * **📷 Sniper Modo y extractor de cámara:** Captura cualquier color del mundo real en tiempo real. Usa el modo ventana o pantalla completa para apuntar con la cámara de tu móvil y obtener al instante el código de color exacto.
-* **🧠 Automatic Harmony Generator:** Instantly get perfect color combinations based on color theory:
-    * Complementary Colors
-    * Analogous Colors (Customize the number of simultaneous analogous colors!)
-    * Triadic Combinations
-* **♿ Built-in Accessibility (WCAG Compliant):** Check the contrast ratio of text against your chosen color in real-time to ensure your designs meet accessibility standards.
-* **🗂️ Palette & Favorites Management:** Save your favorite colors, organize collections, and assign custom names so you never lose your inspiration.
-* **⚙️ Highly Customizable:** * Dark Mode / Gold Mode (Premium) / Chaos Mode.
-    * Multi-language support (ES/EN).
-    * Fixed interface color settings.
+* **🧠 Generador automático de armonía:** Obtén al instante combinaciones de colores perfectas basadas en la teoría del color:
+    * Colores complementarios
+    * Colores análogos (¡Personaliza el número de colores análogos simultáneos!)
+    * Combinaciones triádicas
+* **♿ Accesibilidad Integrada (cumple con las normas WCAG):** Comprueba en tiempo real la relación de contraste del texto con el color elegido para asegurarte de que tus diseños cumplen con los estándares de accesibilidad.
+* **🗂️ Gestión de Paletas y Favoritos:** colecciones y asigna nombres personalizados para que nunca pierdas la inspiración.
+* **⚙️ Altamente Personalizable:** * Dark Mode / Gold Mode (Premium) / Chaos Mode.
+    * Soporte multilingüe (ES/EN).
+    * Configuración de color de interfaz fija.
 
 ---
 
