@@ -60,15 +60,15 @@
 
 ## ⚖️ License & Copyright
 
-This project is the exclusive property of **Jaypsmall (Architect_D4d)**. All rights reserved.
+Este proyecto es propiedad exclusiva de **Jaypsmall (Architect_D4d)**. Todos los derechos reservados. 
 
-🚫 **Strictly prohibited:** Reproduction, distribution, modification, commercial use, or redistribution of this software, code, or executables without the prior written consent of the original author.
+🚫 **Estrictamente prohibido:** Reproducción, distribución, modificación, uso comercial o redistribución de este software, código o ejecutables sin el consentimiento previo por escrito del autor original.
 
-For any inquiries or usage requests, please contact: `pekipekistani22@gmail.com`
+Para cualquier consulta o solicitud de uso, póngase en contacto con: `pekipekistani22@gmail.com`
 
 ---
 
-*Developed with 💛 by an Independent Dev.*
+*Desarrollado con 💛 por un desarrollador independiente*
 
 
 
