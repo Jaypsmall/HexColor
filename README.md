@@ -51,7 +51,7 @@
 
 ---
 
-## 🛠️ Architecture and Technologies (Optional)
+## 🛠️ Arquitectura y Tecnologías (Opcional)
 
 * **Platform:** Native Android
 * **Optimization Tools:** Advanced code obfuscation using **R8 / ProGuard** to ensure the security and performance of the executable.
