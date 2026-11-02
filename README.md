@@ -1,9 +1,9 @@
-# 🎨 HexColor PRO (v1.0.6)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=FFD006) ![Kotlin](https://img.shields.io/badge/kotlin-181717?style=flat&logo=kotlin&logoColor=FFD006) 
+# 🎨 HexColor PRO (v1.0.6)  ![Android](https://img.shields.io/badge/Android-181717?style=flat&logo=android&logoColor=green) ![Kotlin](https://img.shields.io/badge/Kotlin-181717?style=flat&logo=kotlin&logoColor=C81AEE)
 
 **HexColor PRO** es una APK Premium, una elegante herramienta para gestionar, capturar y generar paletas de colores, diseñada específicamente para desarrolladores de software, diseñadores de UI/UX y creadores visuales. Con una interfaz limpia en tonos oscuros y detalles dorados, ofrece todo lo que necesitas para dominar el color en tus proyectos.
 
 <a href="https://github.com/Jaypsmall/HexColor/releases/download/android-app/HexColor_Pro_v1.0.6.apk">
-  <img src="https://img.shields.io/badge/DOWNLOAD_HEXCOLOR_PRO_v1.0.6_APK-181717?style=flat&logo=android&logoColor=FFD006" alt="Download Android Release">
+  <img src="https://img.shields.io/badge/DOWNLOAD_HEXCOLOR_PRO_v1.0.6_APK-181717?style=flat&logo=android&logoColor=green" alt="Download Android Release">
 </a>
 
 ---
